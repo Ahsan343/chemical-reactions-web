@@ -97,11 +97,7 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
     // Educational intro (iOS steps 2-3)
     case 'explainPrecipitation':
       return [
-        { text: 'This is a ' },
-        { text: 'Precipitation Reaction', bold: true },
-        { text: '. How do I know? Well, one way is to notice that one of the product is a solid ' },
-        { text: '(s)', bold: true },
-        { text: ', so once reaction takes place, this solid will be produced and deposit as a precipitate. In this case ' },
+        { text: 'This is a Precipitation Reaction. How do I know? Well, one way is to notice that one of the product is a solid (s), so once reaction takes place, this solid will be produced and deposit as a precipitate. In this case ' },
         { text: state.selectedReaction?.product.formula ?? 'CaCO₃', bold: true },
       ];
     case 'explainUnknownMetal':
@@ -139,14 +135,9 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
       ];
     case 'reaction1':
       return [
-        { text: `You added ${state.unknownReactantMassAdded.toFixed(2)}g of the unknown reactant. Now, let's watch the reaction. ` },
-        { text: `Watch how the product is produced.`, bold: true },
-      ];
-
-    // Post-reaction1 (iOS step 8)
-    case 'endReaction1':
-      return [
-        { text: `Perfect! You added ${state.unknownReactantMassAdded.toFixed(2)} grams of ` },
+        { text: 'Perfect! You added ' },
+        { text: `${state.unknownReactantMassAdded.toFixed(2)} grams`, bold: true },
+        { text: ' of ' },
         { text: state.metalRevealed
             ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
             : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
@@ -155,27 +146,37 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
         { text: `Watch how ${state.selectedReaction?.product.formula ?? 'the product'} is produced.`, bold: true },
       ];
 
+    // Post-reaction1 (iOS step 8)
+    case 'endReaction1':
+      return [
+        { text: 'The reaction is complete! Why don\'t you check out the macroscopic beaker to see the precipitate you produced! ' },
+        { text: 'Tap the toggle.', bold: true },
+        { text: ' You can also tap back or the run again button to see the reaction again.' },
+      ];
+
     case 'weighProduct':
       return [
-        { text: 'Now, drag the solid precipitate onto the scales to weigh it. ' },
+        { text: 'Now, why don\'t you drag the solid ' },
+        { text: state.selectedReaction?.product.formula ?? 'product', bold: true },
+        { text: ' onto the scales to weigh it? ' },
         { text: 'Drag the solid onto the scales.', bold: true },
       ];
 
     // Post-weighing explanation (iOS step 10)
     case 'postWeighing':
       return [
-        { text: `${state.productMassProduced.toFixed(2)} gram${state.productMassProduced !== 1 ? 's' : ''} of ` },
+        { text: `${state.productMassProduced.toFixed(2)} grams of ` },
         { text: state.selectedReaction?.product.formula ?? '', bold: true },
         { text: ` was produced. By dividing this by its Molar Mass, we know that it's ` },
-        { text: `${state.productMolesProduced.toFixed(4)} mol`, bold: true, color: 'rgb(220, 84, 59)' },
-        { text: `, which means that the ${state.unknownReactantMassAdded.toFixed(2)} grams of ` },
+        { text: `${state.productMolesProduced.toFixed(4)} mol`, bold: true },
+        { text: `, which means that the ` },
+        { text: `${state.unknownReactantMassAdded.toFixed(2)} grams of `, bold: true },
         { text: state.metalRevealed
             ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
             : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
           bold: true },
         { text: ` we added are ` },
-        { text: `${state.productMolesProduced.toFixed(4)} mol`, bold: true, color: 'rgb(220, 84, 59)' },
-        { text: '. But what does this mean?' },
+        { text: `${state.productMolesProduced.toFixed(4)} mol. But what does this mean?`, bold: true },
       ];
 
     case 'revealMetal': {
@@ -186,8 +187,8 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
       const revealedFormula = replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal);
       return [
         { text: `Well, if there are ${state.unknownReactantMassAdded.toFixed(2)} grams in ${state.productMolesProduced.toFixed(4)} moles of ${unknownFormula}, then how many are in 1 mol? There are ${unknownMolarMass} grams of ${unknownFormula}, in 1 mol. That's right, ${unknownMolarMass} g/mol is the Molar Mass of it, and ` },
-        { text: revealedFormula, bold: true, color: 'rgb(220, 84, 59)' },
-        { text: `'s Molar Mass matches perfectly! So ` },
+        { text: `${revealedFormula}`, bold: true },
+        { text: ` Molar Mass matches perfectly! So ` },
         { text: `M = ${state.currentMetal}`, bold: true, color: 'rgb(220, 84, 59)' },
       ];
     }
@@ -206,7 +207,7 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
       return [
         { text: 'Now just watch how the reactant you added produces more and more ' },
         { text: state.selectedReaction?.product.formula ?? 'product', bold: true },
-        { text: ' as it neutralizes all of the ' },
+        { text: ', as it neutralizes all of the ' },
         { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
         { text: ' that was left in the beaker. ' },
         { text: 'Change between both Microscopic and Macroscopic views.', bold: true },

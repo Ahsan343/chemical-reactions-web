@@ -263,7 +263,8 @@ export function useBalancedReactionState(exploreMode = false): BalancedReactionS
     if (balancer.isAtomCountsBalanced && balancer.isMultipleOfBalanced) {
       return [
         { text: 'There are now the same number of atoms on both sides of the equation, but each coefficient could be smaller. ' },
-        { text: 'Try to remove molecules.', bold: true },
+        { text: 'Try to remove molecules', bold: true },
+        { text: '.' },
       ];
     }
 

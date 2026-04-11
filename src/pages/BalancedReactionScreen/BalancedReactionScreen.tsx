@@ -176,18 +176,14 @@ export default function BalancedReactionScreen() {
       case 'selectReaction':
         return [
           { text: 'Chemical reactions are represented as an equation. ' },
-          { text: 'Choose a reaction and then let\'s find out more about that!', bold: true },
+          { text: 'Let\'s find out more about that, choose a reaction first.', bold: true },
         ];
 
       // Educational intro (iOS steps 2-5)
       case 'introFormulas':
         return [
-          { text: 'A reaction is separated in two parts: the left part where the ' },
-          { text: 'reactants', bold: true },
-          { text: ' are, and the right part where the ' },
-          { text: 'products', bold: true },
-          { text: ' are. The compounds are represented as ' },
-          { text: 'empirical formulas', bold: true },
+          { text: 'A reaction is separated in two parts: left part where the reactants are and right part where the products are. The compounds are represented as ' },
+          { text: 'Empirical Formulas', bold: true },
           { text: ', which indicates the atoms ratio within the molecule.' },
         ];
       case 'introFormulaExample': {
@@ -208,13 +204,13 @@ export default function BalancedReactionScreen() {
           const parts: Array<{ text: string; bold?: boolean }> = [
             { text: 'For example, in this case ' },
             { text: r1.molecule.formula, bold: true },
-            { text: ` is ${r1.molecule.name} which has ${describeAtoms(r1.molecule)}.` },
+            { text: ` is ${r1.molecule.name}, and the molecule of ${r1.molecule.name} has ${describeAtoms(r1.molecule)}.` },
           ];
           if (r2) {
             parts.push(
               { text: ' ' },
               { text: r2.molecule.formula, bold: true },
-              { text: ` is ${r2.molecule.name} which has ${describeAtoms(r2.molecule)}.` },
+              { text: ` is ${r2.molecule.name}, and the molecule of ${r2.molecule.name} has ${describeAtoms(r2.molecule)}.` },
             );
           }
           return parts;
@@ -223,15 +219,17 @@ export default function BalancedReactionScreen() {
       }
       case 'introCoefficients':
         return [
-          { text: 'But this is not the only numbers that are involved in the equation. ' },
-          { text: 'Stoichiometric coefficients', bold: true },
-          { text: ' are values that are written on the left of the compound to determine how many molecules there are.' },
+          { text: 'But this is not the only number that are involved in the equation. ' },
+          { text: 'Stoichiometric Coefficients', bold: true },
+          { text: ' are values that are written on the left of the compound to determine how many molecules of it there is.' },
         ];
       case 'introBalanced':
         return [
           { text: 'These values allow the reaction to be ' },
           { text: 'balanced', bold: true },
-          { text: '. All chemical reactions, as the equation they are, have to be balanced, meaning that there has to be the ' },
+          { text: '. All chemical reactions, as the equation they are, have to be ' },
+          { text: 'balanced', bold: true },
+          { text: ', meaning that there has to the ' },
           { text: 'same amount of atoms on each side of the equation', bold: true },
           { text: '.' },
         ];
@@ -249,7 +247,7 @@ export default function BalancedReactionScreen() {
         if (state.completedCount === 0) {
           // First reaction
           return [
-            { text: "Let's learn how to do that right now with this equation. At the moment, there aren't any compounds on either side. " },
+            { text: "Let's learn how to do that right now with this equation. At this moment there aren't any compounds on either side. " },
             { text: 'Drag the molecules to the corresponding side to balance the equation.', bold: true },
           ];
         } else {
@@ -266,14 +264,14 @@ export default function BalancedReactionScreen() {
         const isLastReaction = state.completedCount >= state.reactions.length;
         if (isLastReaction) {
           return [
-            { text: 'The equation is balanced!', bold: true },
-            { text: ' This is what the real equation for this reaction looks like. There are the same number of atoms on both sides of the equation. ' },
-            { text: 'Perfect! Now you know how to balance equations.', bold: true },
+            { text: 'Equation is balanced!', bold: true },
+            { text: ' This is how the real equation for this reaction looks like. There are the same amount of atoms on both sides of the equation. ' },
+            { text: 'Perfect! Now you know balancing equations.', bold: true },
           ];
         } else {
           return [
-            { text: 'The equation is balanced!', bold: true },
-            { text: ' This is what the real equation for this reaction looks like. There are the same number of atoms on both sides of the equation. ' },
+            { text: 'Equation is balanced!', bold: true },
+            { text: ' This is how the real equation for this reaction looks like. There are the same amount of atoms on both sides of the equation. ' },
             { text: 'Choose another one.', bold: true },
           ];
         }

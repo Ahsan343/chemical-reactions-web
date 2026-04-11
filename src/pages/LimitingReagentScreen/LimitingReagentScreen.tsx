@@ -120,10 +120,10 @@ export default function LimitingReagentScreen() {
           { text: 'Choose a reaction.', bold: true, color: 'rgb(220, 84, 59)' },
         ];
 
-      // --- Educational intro (iOS steps 2-6) ---
+      // --- Educational intro (steps 2-6) ---
       case 'introStoichiometry':
         return [
-          { text: 'The section of Chemistry that uses relations between reactants and products in a reaction to determine data is called ' },
+          { text: 'The section of Chemistry that uses relations between compounds in a reaction to determine data is called ' },
           { text: 'Stoichiometry', bold: true },
           { text: ". Let's analyze the equation chosen." },
         ];
@@ -168,15 +168,25 @@ export default function LimitingReagentScreen() {
         ];
 
       // --- Add limiting reactant (iOS step 8) ---
-      case 'addLimiting':
+      case 'addLimiting': {
+        const byProductsText = r?.byProducts?.map(bp => bp.formula).join(' and ') ?? '';
+        const productsText = byProductsText
+          ? `${byProductsText} and ${r?.product.formula ?? ''}`
+          : r?.product.formula ?? '';
+
         return [
-          { text: 'Perfect! Now, the reactants of this reaction are: ' },
+          { text: 'Perfect! Now, the reactants of this reaction are ' },
           { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
           { text: ' and ' },
           { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
-          { text: `. When these two interact, they produce H\u2082O, ${r?.product.formula ?? ''} and CO\u2082. In this particular case, we have the solid ${r?.limitingReactant.formula ?? ''}, so ` },
+          { text: `. When these two interact, they produce ` },
+          { text: productsText, bold: true, color: r?.product.color },
+          { text: `. In this particular case, we have the ${r?.limitingReactant.state ?? 'liquid'} ` },
+          { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
+          { text: ', so ' },
           { text: `shake it into the beaker.`, bold: true, color: 'rgb(220, 84, 59)' },
         ];
+      }
 
       // --- Post-limiting narrative (iOS steps 9-14) ---
       case 'explainMolarity':
@@ -210,7 +220,7 @@ export default function LimitingReagentScreen() {
           { text: `${state.limitingMoles.toFixed(2)} moles`, bold: true, color: 'rgb(220, 84, 59)' },
           { text: ` of ` },
           { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
-          { text: ` present in the solution (Moles = V \u00D7 M). But what else can we determine by knowing the moles of this reactant? Let's see..` },
+          { text: ` present in the solution (Moles = V x M). But what else can we determine by knowing the moles of this reactant? Let's see..` },
         ];
       case 'showNeededExcess':
         return [
@@ -235,43 +245,46 @@ export default function LimitingReagentScreen() {
       case 'showTheoreticalMass':
         return [
           { text: 'And by knowing the ' },
-          { text: 'Molar Mass (MM, in g/mol)', bold: true },
-          { text: ` of ${r?.product.formula ?? ''}, we can calculate the mass. Theoretically, ` },
-          { text: `${state.theoreticalMass.toFixed(2)}g`, bold: true, color: 'rgb(220, 84, 59)' },
-          { text: ` of ${r?.product.formula ?? ''} should be produced.` },
+          { text: 'Molar Mass (MM sometimes referred to as M, in g/mol)', bold: true },
+          { text: ` of the compound, we can calculate the mass produced. Theoretically, ` },
+          { text: `${state.theoreticalMass.toFixed(2)} grams`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ` },
+          { text: `${r?.product.formula ?? ''}`, bold: true, color: r?.product.color },
+          { text: ` should be produced if all the ` },
+          { text: `${r?.limitingReactant.formula ?? ''}`, bold: true, color: r?.limitingReactant.color },
+          { text: ` reacts.` },
         ];
 
       // --- Add excess reactant (iOS step 15) ---
       case 'addExcess':
         return [
-          { text: `Let's call that ${r?.product.formula ?? ''} theoretical. Now let's add the other reactant, ` },
-          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
-          { text: ', and see the reaction. ' },
+          { text: `Let's call that ${r?.product.formula ?? ''} theoretical. Let's add now the other reactant, the ${r?.excessReactant.formula ?? ''}, and see the reaction going. ` },
           { text: `Shake ${r?.excessReactant.formula ?? ''} into the beaker.`, bold: true, color: 'rgb(220, 84, 59)' },
         ];
 
       // --- Reaction (iOS step 16) ---
       case 'reacting':
         return [
-          { text: `Let's watch as ` },
-          { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
-          { text: ' and ' },
-          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
-          { text: ' react to produce ' },
+          { text: `Awesome! Now let's wait for the ` },
           { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
-          { text: '! Click Next to start.' },
+          { text: ' to be produced. Using the Molar Mass of ' },
+          { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
+          { text: ' we can know really how many grams of it is being produced. Let\'s call that the ' },
+          { text: `actual ${r?.product.formula ?? ''}`, bold: true, color: r?.product.color },
         ];
 
       // --- Post-reaction narrative (iOS steps 17-19) ---
       case 'endReaction':
         return [
-          { text: 'Done! But wait, the actual mass of ' },
+          { text: 'Done! You added the amount needed of ' },
+          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
+          { text: '. But wait a minute, the actual mass of ' },
           { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
           { text: ' is ' },
           { text: `${state.actualMass.toFixed(2)}g`, bold: true, color: 'rgb(220, 84, 59)' },
-          { text: ', which is lower than what we expected, the theoretical mass of ' },
-          { text: `${r?.product.formula ?? ''}`, bold: true, color: r?.product.color },
-          { text: ' of ' },
+          { text: ', being still lower than what we expected, the theoretical ' },
+          { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
+          { text: ' ' },
           { text: `${state.theoreticalMass.toFixed(2)}g`, bold: true, color: 'rgb(220, 84, 59)' },
           { text: '.' },
         ];
@@ -279,7 +292,7 @@ export default function LimitingReagentScreen() {
         return [
           { text: 'Well, this is because in real life, the ideal values of the products are not obtained. An important concept is ' },
           { text: 'Yield Percentage', bold: true },
-          { text: '. This percentage represents how close or far from theory the real mass obtained of the product is.' },
+          { text: '. This percentage represents how close or far from theory is the real mass obtained of the product.' },
         ];
       case 'showYieldPercentage':
         return [
@@ -297,30 +310,35 @@ export default function LimitingReagentScreen() {
         return [
           { text: `Do you think we could improve that percentage by adding even more ` },
           { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
-          { text: "? Let's see! " },
-          { text: `Shake ${r?.excessReactant.formula ?? ''} into the beaker.`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: "? " },
+          { text: `Let's see, shake ${r?.excessReactant.formula ?? ''} into the beaker.`, bold: true, color: 'rgb(220, 84, 59)' },
         ];
 
       // --- Post-extra-excess narrative (iOS steps 21-23) ---
       case 'explainExcessNotReacting':
         return [
-          { text: 'Weird! ' },
+          { text: 'Wow! ' },
           { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
-          { text: ' is accumulating, but the reaction is not taking place. Why is this?' },
+          { text: ' is accumulating, but the reaction is not taking place. ' },
+          { text: 'Why is this?', bold: true, color: 'rgb(220, 84, 59)' },
         ];
       case 'explainLimitingReagent':
         return [
-          { text: `Very simple! There is not enough ${r?.limitingReactant.formula ?? ''}, we run out of it (` },
+          { text: `Very simple! There is not enough ${r?.limitingReactant.formula ?? ''}, we only added so much of it (` },
           { text: `${state.limitingMoles.toFixed(2)} moles`, bold: true, color: 'rgb(220, 84, 59)' },
           { text: '). In stoichiometry, this is called the ' },
           { text: 'Limiting Reagent', bold: true },
-          { text: `, as ${r?.limitingReactant.formula ?? ''} is the compound that limits the reaction as there is a shortage of it.` },
+          { text: `, as ` },
+          { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
+          { text: ` is the compound that limits the reaction as there is a shortage of it.` },
         ];
       case 'explainExcessReactant':
         return [
           { text: `When this happens, the other reactant would be the ` },
           { text: 'Excess Reactant', bold: true },
-          { text: `, in this case ${r?.excessReactant.formula ?? ''}. There's an excess of ` },
+          { text: `, in this case ` },
+          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
+          { text: `. There's an excess of ` },
           { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
           { text: `, making it accumulate instead of react. Awesome right? Let's learn more about stoichiometry.` },
         ];
@@ -328,9 +346,7 @@ export default function LimitingReagentScreen() {
       // --- Complete ---
       case 'complete':
         return [
-          { text: 'Experiment complete! The yield was ' },
-          { text: `${state.yieldPercent.toFixed(0)}%`, bold: true, color: 'rgb(220, 84, 59)' },
-          { text: '. Click Next to try another reaction.' },
+          { text: 'Now, let\'s repeat the experiment with the other reaction!' },
         ];
 
       default:
