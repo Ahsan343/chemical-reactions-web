@@ -542,7 +542,7 @@ export default function PrecipitationScreen() {
                   </span>
                   {' \u00D7 '}
                   {state.equationState !== 'blank' ? (
-                    <span className={styles.equationValue}>0.25</span>
+                    <span className={styles.equationValue}>{state.knownReactantMolarity.toFixed(2)}</span>
                   ) : (
                     <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(180,180,180)', borderRadius: 3, textAlign: 'center', lineHeight: '20px', color: 'rgb(180,180,180)' }}>?</span>
                   )}

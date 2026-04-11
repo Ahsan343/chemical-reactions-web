@@ -93,6 +93,7 @@ export interface PrecipitationState {
   unknownMolecules: MoleculeDot[];
 
   unknownReactantMolarMass: number;
+  knownReactantMolarity: number;
   knownReactantMoles: number;
   productMolesProduced: number;
   productMassProduced: number;
@@ -493,6 +494,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     unknownMolecules,
 
     unknownReactantMolarMass,
+    knownReactantMolarity,
     knownReactantMoles,
     productMolesProduced,
     productMassProduced,
