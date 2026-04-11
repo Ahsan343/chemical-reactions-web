@@ -1,0 +1,162 @@
+.wrapper {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  transform: none;
+  z-index: 9000;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.toggle {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  width: 36px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: rgb(242, 242, 242);
+  cursor: pointer;
+  padding: 8px;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgb(228, 228, 228);
+  }
+}
+
+.hamburgerLine {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: rgb(64, 64, 64);
+  border-radius: 1px;
+  transition: transform 0.2s ease;
+}
+
+.panel {
+  width: 0;
+  overflow: hidden;
+  background: rgb(245, 245, 245);
+  border-radius: 0 12px 12px 0;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+  transition: width 0.25s ease;
+}
+
+.panelOpen {
+  width: 280px;
+}
+
+.navList {
+  list-style: none;
+  margin: 0;
+  padding: 16px 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(64, 64, 64);
+  white-space: nowrap;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+}
+
+.navButtonActive {
+  font-weight: 700;
+  color: rgb(220, 84, 59);
+  background: rgba(220, 84, 59, 0.06);
+}
+
+.navIcon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.navLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cabinetButton {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1.5px solid rgb(200, 200, 200);
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgb(120, 120, 120);
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    color: rgb(64, 64, 64);
+    border-color: rgb(150, 150, 150);
+    background: rgba(0, 0, 0, 0.03);
+  }
+}
+
+.cabinetIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.exploreButton {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1.5px solid rgb(200, 200, 200);
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgb(120, 120, 120);
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    color: rgb(72, 160, 80);
+    border-color: rgb(72, 160, 80);
+    background: rgba(72, 160, 80, 0.06);
+  }
+}
+
+.exploreIcon {
+  width: 16px;
+  height: 16px;
+}

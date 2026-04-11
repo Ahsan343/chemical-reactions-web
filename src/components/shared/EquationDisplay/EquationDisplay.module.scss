@@ -1,0 +1,27 @@
+.equation {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: 18px;
+  font-weight: 500;
+  color: rgb(64, 64, 64);
+  font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.state {
+  color: rgb(140, 140, 140);
+  font-size: 0.75em;
+  font-style: italic;
+  margin-left: 1px;
+}
+
+.coefficient {
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+.emphasize {
+  color: rgb(220, 84, 59);
+  font-weight: 700;
+}

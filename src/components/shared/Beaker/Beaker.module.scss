@@ -1,0 +1,123 @@
+.beakerContainer {
+  position: relative;
+  display: inline-block;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.beakerSvg {
+  display: block;
+}
+
+.liquidFill {
+  transition: y 0.4s ease, height 0.4s ease;
+}
+
+.childrenOverlay {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+// ----- FillableBeaker -----
+
+.fillableWrapper {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+  padding-left: 32px;
+}
+
+.sliderTrack {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.verticalSlider {
+  appearance: none;
+  -webkit-appearance: none;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 4px;
+  height: 100%;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  // Track
+  &::-webkit-slider-runnable-track {
+    width: 4px;
+    background: rgba(64, 64, 64, 0.2);
+    border-radius: 2px;
+  }
+
+  &::-moz-range-track {
+    width: 4px;
+    background: rgba(64, 64, 64, 0.2);
+    border-radius: 2px;
+    border: none;
+  }
+
+  // Thumb
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgb(220, 84, 59);
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    margin-left: -6px;
+  }
+
+  &::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgb(220, 84, 59);
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+  }
+}
+
+// ----- BeakerMoleculeGrid -----
+
+.moleculeGridContainer {
+  position: absolute;
+  inset: 0;
+}
+
+.moleculeDot {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.moleculeDotAnimated {
+  animation: dotFadeIn 0.3s ease forwards;
+}
+
+@keyframes dotFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

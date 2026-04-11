@@ -1,0 +1,420 @@
+.sidebar {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 8000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 0 12px 12px 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  color: rgb(68, 130, 210);
+  padding: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: rgba(68, 130, 210, 0.1);
+    color: rgb(40, 100, 180);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+}
+
+.icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* ── Feedback Modal ── */
+
+.modalOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 28px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 14px 0;
+  color: rgb(40, 40, 40);
+}
+
+.modalBody {
+  font-size: 14px;
+  color: rgb(80, 80, 80);
+  line-height: 1.5;
+  text-align: left;
+  margin-bottom: 18px;
+
+  p {
+    margin: 4px 0;
+  }
+}
+
+.modalClose {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: rgb(230, 230, 230);
+  font-size: 16px;
+  font-weight: 600;
+  color: rgb(40, 40, 40);
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgb(215, 215, 215);
+  }
+}
+
+/* ── Full Info Page (matches iOS) ── */
+
+.infoPageOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10000;
+  background: #fff;
+}
+
+.infoPage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.backButton {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: 500;
+  color: rgb(0, 122, 255);
+  cursor: pointer;
+  text-align: left;
+  flex-shrink: 0;
+
+  &:hover {
+    color: rgb(0, 90, 200);
+  }
+}
+
+.infoScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 40px 40px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* Hero Banner */
+.heroBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: rgb(195, 215, 235);
+  border-radius: 16px;
+  padding: 24px 32px;
+  margin-bottom: 20px;
+}
+
+.heroCard {
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 70px;
+}
+
+.atomicNumber {
+  font-size: 10px;
+  color: rgb(60, 60, 60);
+  align-self: flex-start;
+}
+
+.elementSymbol {
+  font-size: 32px;
+  font-weight: 700;
+  color: rgb(50, 90, 140);
+  line-height: 1.1;
+}
+
+.elementName {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(50, 90, 140);
+}
+
+.atomicMass {
+  font-size: 9px;
+  color: rgb(50, 90, 140);
+}
+
+.heroAtom {
+  width: 80px;
+  height: 80px;
+}
+
+.heroBeaker {
+  width: 55px;
+  height: 70px;
+}
+
+/* Section titles */
+.sectionTitle {
+  font-size: 26px;
+  font-weight: 600;
+  color: rgb(100, 150, 200);
+  text-align: center;
+  margin: 16px 0 14px;
+}
+
+.bodyText {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgb(50, 50, 50);
+  margin: 8px 0;
+}
+
+.bodyTextSmall {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgb(80, 80, 80);
+  margin: 16px 0 8px;
+}
+
+.linkText {
+  display: block;
+  font-size: 15px;
+  color: rgb(0, 122, 255);
+  margin: 12px 0;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.linkTextCenter {
+  display: block;
+  font-size: 15px;
+  color: rgb(0, 122, 255);
+  text-align: center;
+  margin: 10px 0;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Support section */
+.supportBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(195, 215, 235);
+  border-radius: 16px;
+  padding: 20px 32px;
+  margin: 24px 0 16px;
+}
+
+.supportIllustration {
+  width: 90px;
+  height: 75px;
+}
+
+.tipSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 20px 0;
+  gap: 10px;
+}
+
+.tipHearts {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 380px;
+  padding: 0 4px;
+}
+
+.heartButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 2px;
+  transition: transform 0.1s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.heartGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+  font-size: 14px;
+  line-height: 1.1;
+  min-height: 32px;
+  justify-content: flex-end;
+}
+
+.heartRow {
+  display: flex;
+  gap: 1px;
+  justify-content: center;
+}
+
+.heartFilled {
+  color: rgb(90, 130, 190);
+}
+
+.heartOutline {
+  color: rgb(180, 180, 180);
+}
+
+
+.tipSlider {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  height: 24px;
+}
+
+.tipSliderTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 5px;
+  background: rgb(200, 200, 200);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.tipSliderFill {
+  position: relative;
+  height: 100%;
+  background: rgb(100, 150, 210);
+  border-radius: 3px;
+  transition: width 0.15s ease;
+}
+
+.tipThumb {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
+  width: 20px;
+  height: 20px;
+  background: rgb(100, 150, 210);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  transition: right 0.15s ease;
+}
+
+.tipSliderInput {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Remove old pseudo-element thumb — now using .tipThumb element */
+.tipSlider::after {
+  content: none;
+  background: rgb(100, 150, 210);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  transition: left 0.15s ease;
+}
+
+.tipAmount {
+  font-size: 20px;
+  font-weight: 600;
+  color: rgb(50, 50, 50);
+  margin-top: 4px;
+}
+
+.supportButton {
+  padding: 12px 48px;
+  background: rgb(90, 145, 210);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgb(70, 125, 190);
+  }
+}

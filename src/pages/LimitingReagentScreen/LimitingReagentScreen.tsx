@@ -1,0 +1,481 @@
+import { useCallback, useMemo } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
+
+import { useLimitingReagentState } from './hooks/useLimitingReagentState';
+
+import { FillableBeaker } from '../../components/shared/Beaker/FillableBeaker';
+import BeakerMoleculeGrid from '../../components/shared/Beaker/BeakerMoleculeGrid';
+import ShakingContainer from '../../components/shared/ShakingContainer/ShakingContainer';
+import BeakyBox from '../../components/shared/BeakyBox/BeakyBox';
+import DropdownSelector from '../../components/shared/DropdownSelector/DropdownSelector';
+import BranchMenu from '../../components/shared/BranchMenu/BranchMenu';
+import LeftSidebar from '../../components/shared/LeftSidebar/LeftSidebar';
+import HighlightOverlay from '../../components/shared/HighlightOverlay/HighlightOverlay';
+import EquationDisplay from '../../components/shared/EquationDisplay/EquationDisplay';
+import type { EquationSegment } from '../../components/shared/EquationDisplay/EquationDisplay';
+import LimitingEquationView from '../../components/limiting-reagent/LimitingEquationView/LimitingEquationView';
+import ProgressChart from '../../components/limiting-reagent/ProgressChart/ProgressChart';
+
+import styles from './LimitingReagentScreen.module.scss';
+
+function buildReactionSegments(reaction: {
+  limitingReactant: { formula: string; state: string; };
+  excessReactant: { formula: string; state: string; coefficient: number; };
+  product: { formula: string; state: string; };
+  byProducts: { formula: string; state: string; coefficient: number; }[];
+}): EquationSegment[] {
+  const segments: EquationSegment[] = [];
+
+  if (reaction.excessReactant.coefficient > 1) {
+    segments.push({ text: String(reaction.excessReactant.coefficient), isCoefficient: true });
+  }
+  segments.push({ text: reaction.excessReactant.formula });
+  segments.push({ text: `(${reaction.excessReactant.state})`, isState: true });
+  segments.push({ text: ' + ' });
+  segments.push({ text: reaction.limitingReactant.formula });
+  segments.push({ text: `(${reaction.limitingReactant.state})`, isState: true });
+  segments.push({ text: ' \u2192 ' });
+
+  const products = [
+    ...reaction.byProducts.map((bp) => ({
+      formula: bp.formula,
+      state: bp.state,
+      coefficient: bp.coefficient,
+    })),
+    { formula: reaction.product.formula, state: reaction.product.state, coefficient: 1 },
+  ];
+
+  products.forEach((prod, idx) => {
+    if (idx > 0) {
+      segments.push({ text: ' + ' });
+    }
+    if (prod.coefficient > 1) {
+      segments.push({ text: String(prod.coefficient), isCoefficient: true });
+    }
+    segments.push({ text: prod.formula });
+    segments.push({ text: `(${prod.state})`, isState: true });
+  });
+
+  return segments;
+}
+
+export default function LimitingReagentScreen() {
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const exploreMode = searchParams.get('mode') === 'explore';
+  const state = useLimitingReagentState(exploreMode);
+
+  const dropdownOptions = state.reactions.map((r) => ({
+    id: r.id,
+    label: r.name,
+  }));
+
+  const handleSelectReaction = useCallback(
+    (id: string) => {
+      const reaction = state.reactions.find((r) => r.id === id);
+      if (reaction) {
+        state.selectReaction(reaction);
+      }
+    },
+    [state],
+  );
+
+  const handlePourLimiting = useCallback(() => {
+    state.addMolecules('limiting', 5);
+  }, [state]);
+
+  const handlePourExcess = useCallback(() => {
+    state.addMolecules('excess', 5);
+  }, [state]);
+
+  const reactionSegments = useMemo(() => {
+    if (!state.selectedReaction) return [];
+    return buildReactionSegments(state.selectedReaction);
+  }, [state.selectedReaction]);
+
+  const r = state.selectedReaction;
+
+  const beakyStatement = useMemo(() => {
+    if (exploreMode) {
+      if (!r) {
+        return [{ text: 'Free Explore: Choose a reaction to begin experimenting freely.' }];
+      }
+      if (state.inputPhase === 'complete') {
+        return [
+          { text: 'Reaction complete! Yield: ' },
+          { text: `${state.yieldPercent.toFixed(0)}%`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: '. Click Next to try again.' },
+        ];
+      }
+      if (state.isReacting) {
+        return [{ text: 'Reaction in progress...' }];
+      }
+      return [{ text: 'Adjust water level, add reactants freely, then click React when ready.' }];
+    }
+
+    switch (state.inputPhase) {
+      case 'selectReaction':
+        return [
+          { text: 'Now that we know how reactions have their own equation, we should learn now how to use them to determine desired data. ' },
+          { text: 'Choose a reaction.', bold: true, color: 'rgb(220, 84, 59)' },
+        ];
+
+      // --- Educational intro (iOS steps 2-6) ---
+      case 'introStoichiometry':
+        return [
+          { text: 'The section of Chemistry that uses relations between reactants and products in a reaction to determine data is called ' },
+          { text: 'Stoichiometry', bold: true },
+          { text: ". Let's analyze the equation chosen." },
+        ];
+      case 'introPhysicalStates':
+        return [
+          { text: 'We already knew about the Stoichiometric Coefficients, but what are those sub indexes at the right of each compound? Well, those indicate the ' },
+          { text: 'physical state', bold: true },
+          { text: ' of the molecule.' },
+        ];
+      case 'introPhysicalStatesDetail':
+        return [
+          { text: "So, let's see: " },
+          { text: '(aq)', bold: true },
+          { text: ' stands for aqueous, which means that the compound is dissolved in water. ' },
+          { text: '(l)', bold: true },
+          { text: ' means liquid, ' },
+          { text: '(s)', bold: true },
+          { text: ' solid and ' },
+          { text: '(g)', bold: true },
+          { text: ' gaseous. But could we use molecules in real life?' },
+        ];
+      case 'introMoles':
+        return [
+          { text: "Well, we usually can't. Remember that the Stoichiometric Coefficients represent the molecules, but at the same time, for practical reason, we talk about " },
+          { text: 'moles', bold: true },
+          { text: '.' },
+        ];
+      case 'introAvogadro':
+        return [
+          { text: '1 mol = ' },
+          { text: '6.02214076\u00D710\u00B2\u00B3', bold: true },
+          { text: " (the Avogadro number). When we talk about particles (say molecules, atoms, ions). It's a very convenient unit to use in Stoichiometry." },
+        ];
+
+      // --- Set water level (iOS step 7) ---
+      case 'setWaterLevel':
+        return [
+          { text: 'This reaction takes place in water as we already know, so let\'s first set the volume of water (in liters) in the beaker. Volume is often represented by the letter ' },
+          { text: 'V', bold: true },
+          { text: '. ' },
+          { text: 'Use the slider to set the volume.', bold: true, color: 'rgb(220, 84, 59)' },
+        ];
+
+      // --- Add limiting reactant (iOS step 8) ---
+      case 'addLimiting':
+        return [
+          { text: 'Perfect! Now, the reactants of this reaction are: ' },
+          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
+          { text: ' and ' },
+          { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
+          { text: `. When these two interact, they produce H\u2082O, ${r?.product.formula ?? ''} and CO\u2082. In this particular case, we have the solid ${r?.limitingReactant.formula ?? ''}, so ` },
+          { text: `shake it into the beaker.`, bold: true, color: 'rgb(220, 84, 59)' },
+        ];
+
+      // --- Post-limiting narrative (iOS steps 9-14) ---
+      case 'explainMolarity':
+        return [
+          { text: `Awesome! So you are preparing a ` },
+          { text: 'solution', bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ${r?.limitingReactant.formula ?? ''} right now. An important concept related to this, is ` },
+          { text: 'Molarity (M)', bold: true },
+          { text: '. ' },
+          { text: 'Molarity', bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ' is a way to express the concentration of a substance in the solution, in units of ' },
+          { text: 'mol/L', bold: true, color: 'rgb(220, 84, 59)' },
+          { text: '.' },
+        ];
+      case 'showLimitingMolarity':
+        return [
+          { text: `So right now, the Molarity of ` },
+          { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
+          { text: ' in this solution is ' },
+          { text: `${state.molarity.toFixed(2)}M`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` or ` },
+          { text: `${state.molarity.toFixed(2)} moles/L`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: `. This means that for each liter of substance, there is ${state.molarity.toFixed(2)} moles of ${r?.limitingReactant.formula ?? ''}. ` },
+          { text: 'But we already know how many liters there are right?', bold: true, color: 'rgb(220, 84, 59)' },
+        ];
+      case 'showLimitingMoles':
+        return [
+          { text: `Since there are ` },
+          { text: `${state.volume.toFixed(3)} L`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ' of water in the beaker, there are ' },
+          { text: `${state.limitingMoles.toFixed(2)} moles`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ` },
+          { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
+          { text: ` present in the solution (Moles = V \u00D7 M). But what else can we determine by knowing the moles of this reactant? Let's see..` },
+        ];
+      case 'showNeededExcess':
+        return [
+          { text: `So we know that for this reactant to be consumed completely, each ` },
+          { text: `1 mol`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ${r?.limitingReactant.formula ?? ''} has to react with ` },
+          { text: `${r?.excessReactant.coefficient ?? 1} moles`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ${r?.excessReactant.formula ?? ''}. So we would need ` },
+          { text: `${state.excessNeeded.toFixed(2)} moles`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ${r?.excessReactant.formula ?? ''}. Let's call it ${r?.excessReactant.formula ?? ''} needed.` },
+        ];
+      case 'showTheoreticalProduct':
+        return [
+          { text: `Let's look at the stoichiometric relation in the reaction. By each ` },
+          { text: `1 mol`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ${r?.limitingReactant.formula ?? ''} that reacts, so in theory if it reacts in its entirety, ` },
+          { text: `${state.limitingMoles.toFixed(2)} moles`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ${r?.limitingReactant.formula ?? ''} should produce ` },
+          { text: `${state.productMoles.toFixed(2)} moles`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ${r?.product.formula ?? ''}` },
+        ];
+      case 'showTheoreticalMass':
+        return [
+          { text: 'And by knowing the ' },
+          { text: 'Molar Mass (MM, in g/mol)', bold: true },
+          { text: ` of ${r?.product.formula ?? ''}, we can calculate the mass. Theoretically, ` },
+          { text: `${state.theoreticalMass.toFixed(2)}g`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ` of ${r?.product.formula ?? ''} should be produced.` },
+        ];
+
+      // --- Add excess reactant (iOS step 15) ---
+      case 'addExcess':
+        return [
+          { text: `Let's call that ${r?.product.formula ?? ''} theoretical. Now let's add the other reactant, ` },
+          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
+          { text: ', and see the reaction. ' },
+          { text: `Shake ${r?.excessReactant.formula ?? ''} into the beaker.`, bold: true, color: 'rgb(220, 84, 59)' },
+        ];
+
+      // --- Reaction (iOS step 16) ---
+      case 'reacting':
+        return [
+          { text: `Let's watch as ` },
+          { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
+          { text: ' and ' },
+          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
+          { text: ' react to produce ' },
+          { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
+          { text: '! Click Next to start.' },
+        ];
+
+      // --- Post-reaction narrative (iOS steps 17-19) ---
+      case 'endReaction':
+        return [
+          { text: 'Done! But wait, the actual mass of ' },
+          { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
+          { text: ' is ' },
+          { text: `${state.actualMass.toFixed(2)}g`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ', which is lower than what we expected, the theoretical mass of ' },
+          { text: `${r?.product.formula ?? ''}`, bold: true, color: r?.product.color },
+          { text: ' of ' },
+          { text: `${state.theoreticalMass.toFixed(2)}g`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: '.' },
+        ];
+      case 'explainYieldConcept':
+        return [
+          { text: 'Well, this is because in real life, the ideal values of the products are not obtained. An important concept is ' },
+          { text: 'Yield Percentage', bold: true },
+          { text: '. This percentage represents how close or far from theory the real mass obtained of the product is.' },
+        ];
+      case 'showYieldPercentage':
+        return [
+          { text: 'Yield Percentage is determined as the ratio of the Actual Yield (actual mass obtained of ' },
+          { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
+          { text: ') and Theoretical Yield (the expected mass of ' },
+          { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
+          { text: '). In this case, the Yield Percentage is ' },
+          { text: `${state.yieldPercent.toFixed(0)}%`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: '.' },
+        ];
+
+      // --- Extra excess (iOS step 20) ---
+      case 'addExtraExcess':
+        return [
+          { text: `Do you think we could improve that percentage by adding even more ` },
+          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
+          { text: "? Let's see! " },
+          { text: `Shake ${r?.excessReactant.formula ?? ''} into the beaker.`, bold: true, color: 'rgb(220, 84, 59)' },
+        ];
+
+      // --- Post-extra-excess narrative (iOS steps 21-23) ---
+      case 'explainExcessNotReacting':
+        return [
+          { text: 'Weird! ' },
+          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
+          { text: ' is accumulating, but the reaction is not taking place. Why is this?' },
+        ];
+      case 'explainLimitingReagent':
+        return [
+          { text: `Very simple! There is not enough ${r?.limitingReactant.formula ?? ''}, we run out of it (` },
+          { text: `${state.limitingMoles.toFixed(2)} moles`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: '). In stoichiometry, this is called the ' },
+          { text: 'Limiting Reagent', bold: true },
+          { text: `, as ${r?.limitingReactant.formula ?? ''} is the compound that limits the reaction as there is a shortage of it.` },
+        ];
+      case 'explainExcessReactant':
+        return [
+          { text: `When this happens, the other reactant would be the ` },
+          { text: 'Excess Reactant', bold: true },
+          { text: `, in this case ${r?.excessReactant.formula ?? ''}. There's an excess of ` },
+          { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
+          { text: `, making it accumulate instead of react. Awesome right? Let's learn more about stoichiometry.` },
+        ];
+
+      // --- Complete ---
+      case 'complete':
+        return [
+          { text: 'Experiment complete! The yield was ' },
+          { text: `${state.yieldPercent.toFixed(0)}%`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: '. Click Next to try another reaction.' },
+        ];
+
+      default:
+        return [{ text: '' }];
+    }
+  }, [state.inputPhase, r, state.yieldPercent, state.isReacting, state.molarity, state.volume,
+      state.limitingMoles, state.excessNeeded, state.productMoles, state.theoreticalMass,
+      state.actualMass, exploreMode]);
+
+  const handleNext = useCallback(() => {
+    state.next();
+  }, [state]);
+
+  const handleBack = useCallback(() => {
+    state.goBack();
+  }, [state]);
+
+  const showBack = state.inputPhase !== 'selectReaction';
+  const hasReaction = state.selectedReaction !== null;
+
+  // Determine which containers are active
+  const limitingActive = exploreMode
+    ? (hasReaction && !state.isReacting)
+    : state.inputPhase === 'addLimiting';
+  const excessActive = exploreMode
+    ? (hasReaction && !state.isReacting)
+    : (state.inputPhase === 'addExcess' || state.inputPhase === 'addExtraExcess');
+
+  // Determine if left column should be highlighted
+  const leftHighlighted = exploreMode
+    ? hasReaction
+    : (state.inputPhase === 'addLimiting' || state.inputPhase === 'addExcess' || state.inputPhase === 'addExtraExcess');
+  const waterHighlighted = exploreMode
+    ? hasReaction
+    : state.inputPhase === 'setWaterLevel';
+
+  return (
+    <div className={styles.screen}>
+      <LeftSidebar />
+      <BranchMenu currentRoute={location.pathname} />
+      <div className={styles.topBar}>
+        <div className={styles.equationArea}>
+          {hasReaction && (
+            <EquationDisplay segments={reactionSegments} />
+          )}
+        </div>
+
+        <div className={styles.controls}>
+          <DropdownSelector
+            options={dropdownOptions}
+            selectedId={state.selectedReaction?.id ?? null}
+            onChange={handleSelectReaction}
+            disabled={exploreMode ? false : state.inputPhase !== 'selectReaction'}
+            placeholder="Choose a Substance"
+          />
+        </div>
+      </div>
+
+      <div className={styles.mainContent}>
+        <div className={styles.leftColumn}>
+          <HighlightOverlay highlighted={leftHighlighted}>
+            <div className={styles.containersRow}>
+              <ShakingContainer
+                color={state.selectedReaction?.limitingReactant.color ?? 'rgb(200,60,60)'}
+                label={state.selectedReaction?.limitingReactant.formula ?? 'Limiting'}
+                onPour={handlePourLimiting}
+                disabled={!limitingActive}
+                isActive={limitingActive}
+                tooltipText={limitingActive ? 'Click to add molecules' : undefined}
+              />
+              <ShakingContainer
+                color={state.selectedReaction?.excessReactant.color ?? 'rgb(120,60,200)'}
+                label={state.selectedReaction?.excessReactant.formula ?? 'Excess'}
+                onPour={handlePourExcess}
+                disabled={!excessActive}
+                isActive={excessActive}
+                tooltipText={excessActive ? 'Click to add molecules' : undefined}
+              />
+            </div>
+          </HighlightOverlay>
+
+          <HighlightOverlay highlighted={waterHighlighted}>
+            <div className={styles.beakerArea}>
+              <FillableBeaker
+                waterLevel={state.waterLevel}
+                onWaterLevelChange={state.setWaterLevel}
+                disabled={exploreMode ? !hasReaction || state.isReacting : state.inputPhase !== 'setWaterLevel'}
+                liquidColor="rgb(218, 238, 245)"
+                width={160}
+              >
+                <BeakerMoleculeGrid
+                  molecules={state.allMolecules}
+                  dotSize={10}
+                  animated
+                />
+              </FillableBeaker>
+            </div>
+          </HighlightOverlay>
+        </div>
+
+        <div className={styles.rightColumn}>
+          {hasReaction && (
+            <div className={styles.equationPanel}>
+              <LimitingEquationView
+                equationState={state.equationState}
+                reactionProgress={state.reactionProgress}
+                reaction={state.selectedReaction!}
+                limitingMoles={state.limitingMoles}
+                volume={state.volume}
+              />
+            </div>
+          )}
+
+          <div className={styles.bottomRow}>
+            {hasReaction && (state.moleculeCounts.limiting > 0 || state.moleculeCounts.excess > 0 || state.reactionProgress > 0) && (
+              <div className={styles.progressArea}>
+                <ProgressChart
+                  progress={state.reactionProgress}
+                  reactantColor={state.selectedReaction!.limitingReactant.color}
+                  excessColor={state.selectedReaction!.excessReactant.color}
+                  productColor={state.selectedReaction!.product.color}
+                  limitingLabel={state.selectedReaction!.limitingReactant.formula}
+                  excessLabel={state.selectedReaction!.excessReactant.formula}
+                  productLabel={state.selectedReaction!.product.formula}
+                  limitingCount={state.moleculeCounts.limiting}
+                  excessCount={state.moleculeCounts.excess}
+                  limitingCoefficient={1}
+                  excessCoefficient={state.selectedReaction!.excessReactant.coefficient}
+                  maxCount={30}
+                />
+              </div>
+            )}
+
+            <div className={styles.beakyArea}>
+              <BeakyBox
+                statement={beakyStatement}
+                onNext={handleNext}
+                onBack={handleBack}
+                canGoNext={state.canGoNext}
+                showBack={showBack}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,104 @@
+.reactionDefinition {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  flex-wrap: wrap;
+}
+
+.side {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.element {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.term {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.termTop {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.termBottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 16px;
+}
+
+.coefficientBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 22px;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1;
+  border: 1.5px dashed rgb(180, 180, 180);
+  border-radius: 4px;
+  padding: 1px 3px;
+  color: rgb(100, 100, 100);
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.coefficientFilled {
+  border-style: solid;
+  border-color: rgb(220, 84, 59);
+  color: rgb(220, 84, 59);
+  background: rgba(220, 84, 59, 0.06);
+}
+
+.coefficientCorrect {
+  border-style: solid;
+  border-color: rgb(72, 170, 80);
+  color: rgb(72, 170, 80);
+  background: rgba(72, 170, 80, 0.08);
+}
+
+.placeholderBox {
+  display: inline-block;
+  width: 20px;
+  height: 22px;
+  border: 1.5px dashed rgb(180, 180, 180);
+  border-radius: 4px;
+}
+
+.formula {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.miniMolecule {
+  display: block;
+}
+
+.operator {
+  color: rgb(64, 64, 64);
+  font-weight: 400;
+  padding: 0 4px;
+  align-self: center;
+}
+
+.arrow {
+  font-size: 1.2em;
+  color: rgb(64, 64, 64);
+  padding: 0 6px;
+  user-select: none;
+  align-self: center;
+}

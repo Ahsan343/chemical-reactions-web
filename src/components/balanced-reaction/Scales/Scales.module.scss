@@ -1,0 +1,149 @@
+.scalesContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 150px;
+}
+
+.badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(100, 100, 100, 0.5);
+  flex-shrink: 0;
+  z-index: 2;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.badgeSymbol {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.scaleBody {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.beam {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  transition: transform 0.5s ease-out;
+  transform-origin: center bottom;
+  padding-bottom: 2px;
+}
+
+.beamBar {
+  flex: 1;
+  height: 3px;
+  background: linear-gradient(180deg, rgb(150, 150, 150), rgb(110, 110, 110));
+  align-self: flex-end;
+  margin-bottom: 0;
+  min-width: 6px;
+  border-radius: 1px;
+}
+
+.pan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 42%;
+  min-height: 48px;
+  padding: 4px;
+  background: rgba(200, 200, 200, 0.15);
+  border-radius: 4px 4px 0 0;
+  border-bottom: 2px solid rgba(130, 130, 130, 0.4);
+}
+
+.dotGrid {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  align-items: end;
+  direction: ltr;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: block;
+  box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.25);
+}
+
+.fulcrum {
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 12px solid rgb(120, 120, 120);
+  margin-top: -1px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15));
+}
+
+.labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 2px 4px 0;
+  min-height: 20px;
+}
+
+.countLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(64, 64, 64);
+  min-width: 28px;
+  text-align: center;
+  user-select: none;
+}
+
+.checkmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.checkmarkIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgb(76, 175, 80);
+  color: rgb(76, 175, 80);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  animation: checkmarkAppear 0.25s ease-out;
+  background: rgba(76, 175, 80, 0.08);
+}
+
+@keyframes checkmarkAppear {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

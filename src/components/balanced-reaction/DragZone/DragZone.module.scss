@@ -1,0 +1,31 @@
+.zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.beakerWrapper {
+  transition: transform 0.15s ease;
+}
+
+.beakerActive {
+  transform: scale(1.03);
+}
+
+.moleculesInBeaker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.beakerMolecule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

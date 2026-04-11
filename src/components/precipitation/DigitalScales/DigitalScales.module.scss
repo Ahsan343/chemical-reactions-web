@@ -1,0 +1,69 @@
+$scales-width: 120px;
+$height: $scales-width; // iOS uses 1:1 ratio
+
+.scales {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: $scales-width;
+  height: $height;
+}
+
+// Upper container: 80% width, 70% height
+.container {
+  width: 80%;
+  height: 70%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  border: 1px solid rgb(130, 130, 130);
+  position: relative;
+  transition: border-color 0.2s ease;
+}
+
+.containerEmphasised {
+  border-width: 2px;
+  border-color: rgb(220, 84, 59);
+}
+
+// Small dark platform on top of base
+.platform {
+  width: 40%;
+  height: 6%;
+  background: rgb(64, 64, 64);
+}
+
+// Thin gray base below platform
+.containerBase {
+  width: 100%;
+  height: 6%;
+  background: rgb(130, 130, 130);
+}
+
+// Lower display area: 30% height
+.display {
+  width: 100%;
+  height: 30%;
+  background: rgb(64, 64, 64);
+  border-radius: 0 0 25% 25%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.displayTextFrame {
+  width: 65%;
+  height: 60%;
+  background: white;
+  border: 1px solid rgb(130, 130, 130);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(40, 40, 40);
+  min-height: 16px;
+}

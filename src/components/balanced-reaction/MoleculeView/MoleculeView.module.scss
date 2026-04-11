@@ -1,0 +1,11 @@
+.moleculeView {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.atomSymbol {
+  pointer-events: none;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

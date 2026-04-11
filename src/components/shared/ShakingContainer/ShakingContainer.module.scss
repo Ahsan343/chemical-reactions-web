@@ -1,0 +1,135 @@
+.container {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.25s ease;
+}
+
+.active {
+  transform: translateX(0);
+}
+
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+
+  .fill {
+    background-color: rgb(200, 200, 200) !important;
+  }
+}
+
+.shaking {
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  15% {
+    transform: translateX(-3px) rotate(-2deg);
+  }
+  30% {
+    transform: translateX(3px) rotate(2deg);
+  }
+  45% {
+    transform: translateX(-3px) rotate(-1.5deg);
+  }
+  60% {
+    transform: translateX(3px) rotate(1.5deg);
+  }
+  75% {
+    transform: translateX(-2px) rotate(-1deg);
+  }
+  90% {
+    transform: translateX(2px) rotate(1deg);
+  }
+}
+
+.bottle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.04);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+.neck {
+  width: 20px;
+  height: 16px;
+  background: rgb(235, 235, 235);
+  border: 2px solid rgb(180, 180, 180);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+}
+
+.body {
+  position: relative;
+  width: 52px;
+  height: 64px;
+  background: rgb(245, 245, 245);
+  border: 2px solid rgb(180, 180, 180);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70%;
+  transition: background-color 0.2s ease;
+}
+
+.label {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  padding-bottom: 6px;
+  user-select: none;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(66, 66, 66);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgb(66, 66, 66);
+  }
+}

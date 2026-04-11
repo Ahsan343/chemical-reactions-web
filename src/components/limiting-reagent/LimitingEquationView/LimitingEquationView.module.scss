@@ -1,0 +1,139 @@
+.container {
+  width: 100%;
+  padding: 4px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px 40px;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hidden {
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+}
+
+.equationRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.lhsColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rhsColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.equationLine {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  color: rgb(40, 40, 40);
+  white-space: nowrap;
+  min-height: 28px;
+}
+
+.doubleLine {
+  min-height: 52px;
+}
+
+.termBase {
+  font-style: italic;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.termSub {
+  font-size: 11px;
+  vertical-align: sub;
+  line-height: 1;
+}
+
+.termUnderline {
+  display: block;
+  font-size: 10px;
+  color: rgb(80, 80, 80);
+  text-align: center;
+  margin-top: -2px;
+}
+
+.orangeValue {
+  color: rgb(220, 84, 59);
+  font-weight: 600;
+}
+
+.placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 24px;
+  border: 1.5px solid rgb(220, 84, 59);
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 14px;
+  color: rgb(220, 84, 59);
+  padding: 0 4px;
+}
+
+.placeholderEmpty {
+  border-color: rgb(180, 180, 180);
+  color: rgb(180, 180, 180);
+}
+
+.fraction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  line-height: 1.1;
+  margin: 0 4px;
+}
+
+.numerator {
+  padding-bottom: 1px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.divider {
+  width: 100%;
+  height: 1.5px;
+  background: rgb(60, 60, 60);
+  min-width: 40px;
+}
+
+.denominator {
+  padding-top: 1px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
