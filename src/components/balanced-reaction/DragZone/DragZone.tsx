@@ -53,6 +53,7 @@ function BeakerDraggableMolecule({
       elementType: side,
       source: 'beaker', // marks this drag as originating from inside a beaker
     },
+    disabled: !onRemove,
   });
 
   // Track whether this molecule should play the enter animation
@@ -67,7 +68,7 @@ function BeakerDraggableMolecule({
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.3 : 1,
-    cursor: isDragging ? 'grabbing' : 'grab',
+    cursor: onRemove ? (isDragging ? 'grabbing' : 'grab') : 'default',
     zIndex: isDragging ? 10 : 1,
     // pointer-events must be auto so dragging works inside the beaker overlay
     pointerEvents: 'auto' as const,

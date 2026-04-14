@@ -394,6 +394,7 @@ export default function BalancedReactionScreen() {
               <MoleculeGrid
                 reaction={state.selectedReaction!}
                 showTutorial={state.showTutorial}
+                dragEnabled={dragEnabled}
               />
             </div>
           </div>

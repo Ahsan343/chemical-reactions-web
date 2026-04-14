@@ -55,7 +55,8 @@
   justify-content: center;
   gap: 10px;
   flex-shrink: 0;
-  width: 280px;
+  width: 420px;
+  min-width: 320px;
   min-height: 0;
   align-self: center;
   padding: 0 12px;
@@ -63,24 +64,37 @@
 
 .containersRow {
   display: flex;
-  gap: 20px;
+  gap: 14px;
   justify-content: center;
   align-items: flex-end;
   flex-shrink: 0;
+  margin: 0 auto;
 }
 
 .beakerScalesRow {
   display: flex;
   align-items: flex-end;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 20px;
   flex-shrink: 0;
 }
 
 .scalesArea {
+  position: relative;
   flex-shrink: 0;
   align-self: flex-end;
   padding-bottom: 0;
+}
+
+.scalePrecipitate {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  pointer-events: none;
+  z-index: 5;
 }
 
 .beakerWrapper {
