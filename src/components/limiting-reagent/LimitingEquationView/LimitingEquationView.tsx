@@ -1,8 +1,15 @@
 import { useMemo } from 'react';
 import type { LimitingReagentReactionDef } from '../../../helper/chemistry/types';
+import HighlightOverlay from '../../shared/HighlightOverlay/HighlightOverlay';
 import styles from './LimitingEquationView.module.scss';
 
 type EquationState = 'blank' | 'theoretical' | 'actual';
+
+export type LimitingEquationHighlight =
+  | 'limitingReactantMolesToVolume'
+  | 'neededExcessReactantMoles'
+  | 'theoreticalProductMass'
+  | 'productYieldPercentage';
 
 interface LimitingEquationViewProps {
   equationState: EquationState;
@@ -10,6 +17,12 @@ interface LimitingEquationViewProps {
   reaction: LimitingReagentReactionDef;
   limitingMoles: number;
   volume: number;
+  /**
+   * When non-empty, only the named equation cells render at full intensity —
+   * the rest are dimmed via HighlightOverlay. When empty, all cells render
+   * without any dimming. Mirrors iOS `highlights.elements`.
+   */
+  highlights?: ReadonlySet<LimitingEquationHighlight>;
 }
 
 interface EquationData {
@@ -90,6 +103,7 @@ export default function LimitingEquationView({
   reaction,
   limitingMoles,
   volume,
+  highlights,
 }: LimitingEquationViewProps) {
   const data = useMemo(
     () => computeEquationData(reaction, limitingMoles, volume, reactionProgress),
@@ -103,10 +117,15 @@ export default function LimitingEquationView({
   const er = reaction.excessReactant.formula;
   const pr = reaction.product.formula;
 
+  const hasActiveHighlight = (highlights?.size ?? 0) > 0;
+  const isCellHighlighted = (target: LimitingEquationHighlight) =>
+    !hasActiveHighlight || (highlights?.has(target) ?? false);
+
   return (
     <div className={styles.container}>
       <div className={styles.grid}>
         {/* Top row, col 1: Limiting reactant moles */}
+        <HighlightOverlay highlighted={isCellHighlighted('limitingReactantMolesToVolume')}>
         <div className={`${styles.cell} ${showTheoretical ? styles.visible : styles.hidden}`}>
           <div className={styles.equationRow}>
             <div className={styles.lhsColumn}>
@@ -131,7 +150,10 @@ export default function LimitingEquationView({
           </div>
         </div>
 
+        </HighlightOverlay>
+
         {/* Top row, col 2: Excess reactant needed moles */}
+        <HighlightOverlay highlighted={isCellHighlighted('neededExcessReactantMoles')}>
         <div className={`${styles.cell} ${showTheoretical ? styles.visible : styles.hidden}`}>
           <div className={styles.equationRow}>
             <div className={styles.lhsColumn}>
@@ -154,7 +176,10 @@ export default function LimitingEquationView({
           </div>
         </div>
 
+        </HighlightOverlay>
+
         {/* Top row, col 3: Theoretical product mass */}
+        <HighlightOverlay highlighted={isCellHighlighted('theoreticalProductMass')}>
         <div className={`${styles.cell} ${showTheoretical ? styles.visible : styles.hidden}`}>
           <div className={styles.equationRow}>
             <div className={styles.lhsColumn}>
@@ -179,7 +204,10 @@ export default function LimitingEquationView({
           </div>
         </div>
 
-        {/* Bottom row, col 1: Reacting excess reactant moles (fraction) */}
+        </HighlightOverlay>
+
+        {/* Bottom row, col 1: Reacting excess reactant moles (fraction) — no iOS highlight target, dim when any highlight active */}
+        <HighlightOverlay highlighted={!hasActiveHighlight}>
         <div className={`${styles.cell} ${showActual ? styles.visible : styles.hidden}`}>
           <div className={styles.equationRow}>
             <div className={styles.lhsColumn}>
@@ -219,7 +247,10 @@ export default function LimitingEquationView({
           </div>
         </div>
 
-        {/* Bottom row, col 2: Actual product mass */}
+        </HighlightOverlay>
+
+        {/* Bottom row, col 2: Actual product mass — no iOS highlight target, dim when any highlight active */}
+        <HighlightOverlay highlighted={!hasActiveHighlight}>
         <div className={`${styles.cell} ${showActual ? styles.visible : styles.hidden}`}>
           <div className={styles.equationRow}>
             <div className={styles.lhsColumn}>
@@ -244,7 +275,10 @@ export default function LimitingEquationView({
           </div>
         </div>
 
+        </HighlightOverlay>
+
         {/* Bottom row, col 3: Yield percentage (fraction) */}
+        <HighlightOverlay highlighted={isCellHighlighted('productYieldPercentage')}>
         <div className={`${styles.cell} ${showActual ? styles.visible : styles.hidden}`}>
           <div className={styles.equationRow}>
             <div className={styles.lhsColumn}>
@@ -285,6 +319,7 @@ export default function LimitingEquationView({
             </div>
           </div>
         </div>
+        </HighlightOverlay>
       </div>
     </div>
   );

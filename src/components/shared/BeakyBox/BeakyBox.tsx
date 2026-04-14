@@ -13,12 +13,12 @@ interface BeakyBoxProps {
   bubbleHeight?: number;
 }
 
+// iOS emphasis color (CorePalette.orangeAccent = rgb(220,84,59))
+const EMPHASIS_COLOR = 'rgb(220, 84, 59)';
+
 function renderSegment(segment: TextSegment, index: number) {
   let content: React.ReactNode = segment.text;
 
-  if (segment.bold) {
-    content = <strong>{content}</strong>;
-  }
   if (segment.subscript) {
     content = <sub>{content}</sub>;
   }
@@ -26,11 +26,16 @@ function renderSegment(segment: TextSegment, index: number) {
     content = <sup>{content}</sup>;
   }
 
+  // iOS renders emphasised text in orange (same weight, NOT bold).
+  // We treat `bold: true` as the iOS "emphasised" flag.
+  const emphasisColor = segment.bold ? EMPHASIS_COLOR : undefined;
+  const color = segment.color ?? emphasisColor;
+
   return (
     <span
       key={index}
       className={styles.segment}
-      style={segment.color ? { color: segment.color } : undefined}
+      style={color ? { color } : undefined}
     >
       {content}
     </span>

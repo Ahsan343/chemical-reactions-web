@@ -15,6 +15,7 @@ import DropdownSelector from '../../components/shared/DropdownSelector/DropdownS
 import BranchMenu from '../../components/shared/BranchMenu/BranchMenu';
 import LeftSidebar from '../../components/shared/LeftSidebar/LeftSidebar';
 import HighlightOverlay from '../../components/shared/HighlightOverlay/HighlightOverlay';
+import GhostMolecule from '../../components/balanced-reaction/GhostMolecule/GhostMolecule';
 
 import styles from './BalancedReactionScreen.module.scss';
 
@@ -397,6 +398,14 @@ export default function BalancedReactionScreen() {
               />
             </div>
           </div>
+        )}
+
+        {/* iOS-style ghost molecule hint: animates from the grid into the reactant beaker */}
+        {hasReaction && state.selectedReaction && state.phase === 'dragMolecules' && state.showTutorial && (
+          <GhostMolecule
+            molecule={state.selectedReaction.reactants[0].molecule}
+            active
+          />
         )}
 
         {/* Drag overlay: shows the molecule being dragged at cursor position */}

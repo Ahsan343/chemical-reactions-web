@@ -13,7 +13,7 @@ import LeftSidebar from '../../components/shared/LeftSidebar/LeftSidebar';
 import HighlightOverlay from '../../components/shared/HighlightOverlay/HighlightOverlay';
 import EquationDisplay from '../../components/shared/EquationDisplay/EquationDisplay';
 import type { EquationSegment } from '../../components/shared/EquationDisplay/EquationDisplay';
-import LimitingEquationView from '../../components/limiting-reagent/LimitingEquationView/LimitingEquationView';
+import LimitingEquationView, { type LimitingEquationHighlight } from '../../components/limiting-reagent/LimitingEquationView/LimitingEquationView';
 import ProgressChart from '../../components/limiting-reagent/ProgressChart/ProgressChart';
 
 import styles from './LimitingReagentScreen.module.scss';
@@ -375,13 +375,54 @@ export default function LimitingReagentScreen() {
     ? (hasReaction && !state.isReacting)
     : (state.inputPhase === 'addExcess' || state.inputPhase === 'addExtraExcess');
 
-  // Determine if left column should be highlighted
-  const leftHighlighted = exploreMode
-    ? hasReaction
-    : (state.inputPhase === 'addLimiting' || state.inputPhase === 'addExcess' || state.inputPhase === 'addExtraExcess');
-  const waterHighlighted = exploreMode
-    ? hasReaction
-    : state.inputPhase === 'setWaterLevel';
+  // --- iOS parity: per-step highlight targets (mirrors ScreenElement enum) ---
+  // In explore mode or complete/no-highlight steps, nothing is dimmed (all highlighted).
+  type HighlightTarget =
+    | 'selectReaction'
+    | 'reactionDefinitionStates'
+    | 'beakerSlider'
+    | 'limitingReactantContainer'
+    | 'excessReactantContainer'
+    | LimitingEquationHighlight;
+
+  const activeHighlights = useMemo<ReadonlySet<HighlightTarget>>(() => {
+    if (exploreMode) return new Set();
+    switch (state.inputPhase) {
+      case 'selectReaction':
+        return new Set<HighlightTarget>(['selectReaction']);
+      case 'introPhysicalStates':
+        return new Set<HighlightTarget>(['reactionDefinitionStates']);
+      case 'setWaterLevel':
+        return new Set<HighlightTarget>(['beakerSlider']);
+      case 'addLimiting':
+        return new Set<HighlightTarget>(['limitingReactantContainer']);
+      case 'showLimitingMoles':
+        return new Set<HighlightTarget>(['limitingReactantMolesToVolume']);
+      case 'showNeededExcess':
+        return new Set<HighlightTarget>(['neededExcessReactantMoles']);
+      case 'showTheoreticalMass':
+        return new Set<HighlightTarget>(['theoreticalProductMass']);
+      case 'addExcess':
+      case 'addExtraExcess':
+        return new Set<HighlightTarget>(['excessReactantContainer']);
+      case 'showYieldPercentage':
+        return new Set<HighlightTarget>(['productYieldPercentage']);
+      default:
+        return new Set();
+    }
+  }, [exploreMode, state.inputPhase]);
+
+  const hasAny = activeHighlights.size > 0;
+  const isHighlighted = (t: HighlightTarget) => !hasAny || activeHighlights.has(t);
+
+  // Build equation-cell highlight set for LimitingEquationView
+  const equationHighlights = useMemo<ReadonlySet<LimitingEquationHighlight>>(() => {
+    const s = new Set<LimitingEquationHighlight>();
+    (['limitingReactantMolesToVolume', 'neededExcessReactantMoles', 'theoreticalProductMass', 'productYieldPercentage'] as const).forEach((k) => {
+      if (activeHighlights.has(k)) s.add(k);
+    });
+    return s;
+  }, [activeHighlights]);
 
   return (
     <div className={styles.screen}>
@@ -390,18 +431,22 @@ export default function LimitingReagentScreen() {
       <div className={styles.topBar}>
         <div className={styles.equationArea}>
           {hasReaction && (
-            <EquationDisplay segments={reactionSegments} />
+            <HighlightOverlay highlighted={isHighlighted('reactionDefinitionStates')}>
+              <EquationDisplay segments={reactionSegments} />
+            </HighlightOverlay>
           )}
         </div>
 
         <div className={styles.controls}>
-          <DropdownSelector
-            options={dropdownOptions}
-            selectedId={state.selectedReaction?.id ?? null}
-            onChange={handleSelectReaction}
-            disabled={exploreMode ? false : state.inputPhase !== 'selectReaction'}
-            placeholder="Choose a Substance"
-          />
+          <HighlightOverlay highlighted={isHighlighted('selectReaction')}>
+            <DropdownSelector
+              options={dropdownOptions}
+              selectedId={state.selectedReaction?.id ?? null}
+              onChange={handleSelectReaction}
+              disabled={exploreMode ? false : state.inputPhase !== 'selectReaction'}
+              placeholder="Choose a Substance"
+            />
+          </HighlightOverlay>
         </div>
       </div>
 
@@ -414,6 +459,7 @@ export default function LimitingReagentScreen() {
             reaction={state.selectedReaction!}
             limitingMoles={state.limitingMoles}
             volume={state.volume}
+            highlights={equationHighlights}
           />
         </div>
       )}
@@ -422,8 +468,8 @@ export default function LimitingReagentScreen() {
       <div className={styles.centerArea}>
         {/* Left: bottles stacked above beaker */}
         <div className={styles.beakerColumn}>
-          <HighlightOverlay highlighted={leftHighlighted}>
-            <div className={styles.containersRow}>
+          <div className={styles.containersRow}>
+            <HighlightOverlay highlighted={isHighlighted('limitingReactantContainer')}>
               <ShakingContainer
                 color={state.selectedReaction?.limitingReactant.color ?? 'rgb(200,60,60)'}
                 label={state.selectedReaction?.limitingReactant.formula ?? 'Limiting'}
@@ -432,6 +478,8 @@ export default function LimitingReagentScreen() {
                 isActive={limitingActive}
                 tooltipText={limitingActive ? 'Click to add molecules' : undefined}
               />
+            </HighlightOverlay>
+            <HighlightOverlay highlighted={isHighlighted('excessReactantContainer')}>
               <ShakingContainer
                 color={state.selectedReaction?.excessReactant.color ?? 'rgb(120,60,200)'}
                 label={state.selectedReaction?.excessReactant.formula ?? 'Excess'}
@@ -440,10 +488,10 @@ export default function LimitingReagentScreen() {
                 isActive={excessActive}
                 tooltipText={excessActive ? 'Click to add molecules' : undefined}
               />
-            </div>
-          </HighlightOverlay>
+            </HighlightOverlay>
+          </div>
 
-          <HighlightOverlay highlighted={waterHighlighted}>
+          <HighlightOverlay highlighted={isHighlighted('beakerSlider')}>
             <div className={styles.beakerArea}>
               <FillableBeaker
                 waterLevel={state.waterLevel}
@@ -499,7 +547,7 @@ export default function LimitingReagentScreen() {
               excessLabel={state.selectedReaction!.excessReactant.formula}
               productLabel={state.selectedReaction!.product.formula}
               limitingCount={state.moleculeCounts.limiting}
-              excessCount={state.moleculeCounts.excess}
+              excessCount={state.moleculeCounts.excess + state.extraExcessCount}
               limitingCoefficient={1}
               excessCoefficient={state.selectedReaction!.excessReactant.coefficient}
               maxCount={30}

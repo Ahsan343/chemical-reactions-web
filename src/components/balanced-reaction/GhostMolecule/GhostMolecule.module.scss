@@ -1,0 +1,51 @@
+.ghostOverlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.6;
+  transform: translate(calc(var(--start-x) - 50%), calc(var(--start-y) - 50%));
+  /* iOS: easeInOut, 2.5s, repeat forever (no autoreverse → instant reset) */
+  animation: ghostDragMove 2.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes ghostDragMove {
+  0% {
+    transform: translate(calc(var(--start-x) - 50%), calc(var(--start-y) - 50%));
+    opacity: 0.6;
+  }
+  85% {
+    transform: translate(calc(var(--end-x) - 50%), calc(var(--end-y) - 50%));
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(calc(var(--end-x) - 50%), calc(var(--end-y) - 50%));
+    opacity: 0;
+  }
+}
+
+.moleculeWrap {
+  /* Nothing special — render the molecule at normal size */
+}
+
+.hand {
+  display: block;
+  margin-top: -6px;
+  user-select: none;
+  pointer-events: none;
+  width: 36px;
+  height: auto;
+}

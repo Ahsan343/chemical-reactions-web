@@ -74,7 +74,8 @@ function DraggableMolecule({ gridMolecule, isTutorialTarget, compact }: Draggabl
     <div
       ref={setNodeRef}
       style={style}
-      className={`${styles.draggableItem} ${compact ? styles.compact : ''} ${isTutorialTarget ? styles.tutorialPulse : ''}`}
+      className={`${styles.draggableItem} ${compact ? styles.compact : ''}`}
+      data-tutorial-source={isTutorialTarget ? 'first-reactant' : undefined}
       {...listeners}
       {...attributes}
     >

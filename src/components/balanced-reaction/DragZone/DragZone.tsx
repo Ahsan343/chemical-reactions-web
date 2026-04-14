@@ -188,7 +188,7 @@ export default function DragZone({
   });
 
   return (
-    <div ref={setNodeRef} className={styles.zone}>
+    <div ref={setNodeRef} className={styles.zone} data-beaker={id}>
       <div className={`${styles.beakerWrapper} ${isOver || emphasised ? styles.beakerActive : ''}`}>
         <Beaker
           width={width}
