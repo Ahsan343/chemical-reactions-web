@@ -67,7 +67,7 @@
 /* Particles — OUTSIDE the rotating container, always fall straight down */
 .particlesContainer {
   position: absolute;
-  top: 50%;
+  top: 10px;
   left: 50%;
   transform: translate(-50%, 0);
   width: 40px;

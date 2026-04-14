@@ -315,7 +315,7 @@ export default function PrecipitationScreen() {
 
   const showPrecipitate =
     hasReaction &&
-    state.reactionProgress > 0 &&
+    state.phase === 'weighProduct' &&
     state.precipitatePosition === 'beaker' &&
     state.beakerView === 'macroscopic';
 
@@ -390,18 +390,18 @@ export default function PrecipitationScreen() {
                   waterLevel={state.waterLevel}
                   onWaterLevelChange={state.setWaterLevel}
                   disabled={exploreMode ? (!hasReaction || isReactionPhase) : state.phase !== 'setWaterLevel'}
-                  width={130}
+                  width={160}
                 >
                 {state.beakerView === 'microscopic' ? (
                   <BeakerMoleculeGrid
                     molecules={[...state.knownMolecules, ...state.unknownMolecules]}
                     animated
                   />
-                ) : state.reactionProgress > 0 ? (
+                ) : state.reactionProgress > 0 && state.precipitatePosition === 'beaker' && state.phase !== 'weighProduct' ? (
                   <PrecipitateShape
                     progress={state.reactionProgress}
                     color={state.selectedReaction!.product.color}
-                    size={80}
+                    size={90}
                   />
                 ) : null}
               </FillableBeaker>
@@ -436,6 +436,15 @@ export default function PrecipitationScreen() {
               </div>
 
               <div className={styles.scalesArea} ref={scalesRef}>
+                {state.precipitatePosition === 'scales' && (
+                  <div className={styles.scalePrecipitate}>
+                    <PrecipitateShape
+                      progress={state.reactionProgress}
+                      color={state.selectedReaction!.product.color}
+                      size={44}
+                    />
+                  </div>
+                )}
                 <DigitalScales
                   mass={state.precipitateMass}
                   isDropTarget={state.isDropTarget}

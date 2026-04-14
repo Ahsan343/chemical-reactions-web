@@ -8,6 +8,7 @@ import styles from './MoleculeGrid.module.scss';
 interface MoleculeGridProps {
   reaction: BalancedReactionDef;
   showTutorial: boolean;
+  dragEnabled: boolean;
 }
 
 interface GridMolecule {
@@ -51,22 +52,24 @@ interface DraggableMoleculeProps {
   gridMolecule: GridMolecule;
   isTutorialTarget: boolean;
   compact?: boolean;
+  dragEnabled: boolean;
 }
 
-function DraggableMolecule({ gridMolecule, isTutorialTarget, compact }: DraggableMoleculeProps) {
+function DraggableMolecule({ gridMolecule, isTutorialTarget, compact, dragEnabled }: DraggableMoleculeProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: gridMolecule.dragId,
     data: {
       molecule: gridMolecule.molecule,
       elementType: gridMolecule.elementType,
     },
+    disabled: !dragEnabled,
   });
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     // iOS: source molecule stays fully visible (infinite palette — it doesn't leave the grid)
     opacity: 1,
-    cursor: isDragging ? 'grabbing' : 'grab',
+    cursor: dragEnabled ? (isDragging ? 'grabbing' : 'grab') : 'default',
     zIndex: isDragging ? 10 : 1,
   };
 
@@ -88,6 +91,7 @@ function DraggableMolecule({ gridMolecule, isTutorialTarget, compact }: Draggabl
 export default function MoleculeGrid({
   reaction,
   showTutorial,
+  dragEnabled,
 }: MoleculeGridProps) {
   const { reactantMolecules, productMolecules } = useMemo(
     () => buildGridMolecules(reaction),
@@ -110,6 +114,7 @@ export default function MoleculeGrid({
                 gridMolecule={gm}
                 isTutorialTarget={showTutorial && isFirstMolecule && index === 0 && reactantMolecules.length > 0}
                 compact={isCompact}
+                dragEnabled={dragEnabled}
               />
             ))}
           </div>
@@ -126,6 +131,7 @@ export default function MoleculeGrid({
                 gridMolecule={gm}
                 isTutorialTarget={showTutorial && reactantMolecules.length === 0 && index === 0}
                 compact={isCompact}
+                dragEnabled={dragEnabled}
               />
             ))}
           </div>
