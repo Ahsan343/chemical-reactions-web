@@ -16,135 +16,161 @@ interface BeakerProps {
   children?: ReactNode;
   /** Optional className for the root container */
   className?: string;
+  /** Show graduated tick marks (default: true) */
+  showTicks?: boolean;
 }
 
-const DEFAULT_LIQUID_COLOR = 'rgb(218, 238, 245)';
-const DEFAULT_OUTLINE_COLOR = 'rgb(64, 64, 64)';
+const DEFAULT_LIQUID_COLOR = 'rgb(100, 185, 240)';
+const DEFAULT_OUTLINE_COLOR = 'rgb(90, 90, 90)';
 
-/** Ratio constants derived from iOS BeakerSettings */
-const LIP_RADIUS_RATIO = 0.03;
-const LIP_WIDTH_RATIO = 0.01;
-const CORNER_RADIUS_RATIO = 0.1;
+// ---- iOS BeakerSettings constants ----
 const HEIGHT_TO_WIDTH = 1.1;
-const STROKE_WIDTH = 2;
+const LIP_RADIUS_RATIO = 0.03;       // lipRadius = width * 0.03
+const LIP_WIDTH_LEFT_RATIO = 0.01;   // lipWidthLeft = width * 0.01
+const CORNER_RADIUS_RATIO = 0.1;     // outerBottomCornerRadius = width * 0.1
+const BOTTOM_GAP_RATIO = 0.055;      // innerBeakersBottomGap = width * 0.055
+const LINE_WIDTH = 2;
+
+// ---- Derived ratios for medium/small beakers (shadow layers) ----
+// mediumBeakerRightLipWidth = lipWidthLeft * 9
+// mediumBeakerRightGap = lipWidthLeft * 5
+// mediumBeakerRightCornerRadius = cornerRadius * 1.5
+// smallBeakerRightLipWidth = lipWidthLeft * 9
+// smallBeakerRightGap = 2 * mediumBeakerRightGap
+// smallBeakerRightCornerRadius = mediumBeakerRightCornerRadius * 1.2
 
 interface BeakerGeometry {
   lipRadius: number;
-  lipWidth: number;
+  lipWidthLeft: number;
   cornerRadius: number;
-  /** X offset where the inner wall begins on the left */
-  wallLeft: number;
-  /** X offset where the inner wall begins on the right */
-  wallRight: number;
-  /** Y offset where the inner area starts (below lip) */
+  bottomGap: number;
   innerTop: number;
-  /** Inner width between the walls */
+  wallLeft: number;
+  wallRight: number;
   innerWidth: number;
 }
 
-function computeGeometry(width: number, height: number): BeakerGeometry {
+function computeGeometry(width: number): BeakerGeometry {
   const lipRadius = width * LIP_RADIUS_RATIO;
-  const lipWidth = width * LIP_WIDTH_RATIO;
+  const lipWidthLeft = width * LIP_WIDTH_LEFT_RATIO;
   const cornerRadius = width * CORNER_RADIUS_RATIO;
-  const wallLeft = lipRadius + lipWidth;
-  const wallRight = width - lipRadius - lipWidth;
+  const bottomGap = width * BOTTOM_GAP_RATIO;
+  const wallLeft = lipRadius + lipWidthLeft;
+  const wallRight = width - lipRadius - lipWidthLeft;
+  const innerTop = lipRadius * 2 + 2;
 
   return {
     lipRadius,
-    lipWidth,
+    lipWidthLeft,
     cornerRadius,
+    bottomGap,
+    innerTop,
     wallLeft,
     wallRight,
-    innerTop: lipRadius * 2,
     innerWidth: wallRight - wallLeft,
   };
 }
 
 /**
- * Builds the SVG path string for the beaker outline.
- * Matches the iOS BeakerShape: open top with lip curves, straight sides, rounded bottom.
+ * Builds an SVG path that exactly matches the iOS BeakerShape.
+ * The iOS shape uses semicircular arcs for lips at the top-left and top-right,
+ * straight walls, and quadratic bezier curves for bottom corners.
+ *
+ * @param rightGap - gap on the right side (0 for large, bigger for medium/small)
+ * @param rightLipWidth - lip width on the right (lipWidthLeft for large, lipWidthLeft*9 for medium)
+ * @param leftCornerRadius - bottom-left corner radius
+ * @param rightCornerRadius - bottom-right corner radius
+ * @param bottomGap - gap at the bottom (0 for large, inner gap for medium/small)
  */
-function buildBeakerPath(width: number, height: number, geo: BeakerGeometry): string {
-  const { lipRadius, lipWidth, cornerRadius } = geo;
+function buildBeakerShapePath(
+  width: number,
+  height: number,
+  lipRadius: number,
+  lipWidthLeft: number,
+  rightLipWidth: number,
+  leftCornerRadius: number,
+  rightCornerRadius: number,
+  bottomGap: number,
+  rightGap: number
+): string {
   const d: string[] = [];
+  const lipDiameter = lipRadius * 2;
 
-  // Start at top of left lip curve (top-center of left arc)
-  // Left lip arc: arc center at (lipRadius, lipRadius), from 270deg to 90deg clockwise (SVG: sweep=0)
-  d.push(`M ${lipRadius} 0`);
-  d.push(`A ${lipRadius} ${lipRadius} 0 0 0 ${lipRadius} ${lipRadius * 2}`);
+  // --- Left lip: semicircular arc ---
+  // Arc center at (lipRadius, lipRadius), radius=lipRadius, from 270° to 90° (clockwise in iOS = counter-clockwise in SVG)
+  // SVG arc: start at top of arc, sweep to bottom
+  // Start point: center + radius at 270° = (lipRadius, lipRadius - lipRadius) = (lipRadius, 0)
+  d.push(`M ${lipRadius},${0}`);
+  // Arc to (lipRadius, lipDiameter) — going from top to bottom of the semicircle on the left
+  // SVG arc params: rx ry x-rotation large-arc-flag sweep-flag x y
+  // iOS clockwise from 270° to 90° = goes left then down = counter-clockwise in SVG (sweep=0)
+  d.push(`A ${lipRadius} ${lipRadius} 0 0 0 ${lipRadius},${lipDiameter}`);
 
-  // Left lip horizontal
-  d.push(`L ${lipRadius + lipWidth} ${lipRadius * 2}`);
+  // Left lip extension
+  d.push(`L ${lipRadius + lipWidthLeft},${lipDiameter}`);
 
-  // Left wall down to bottom-left curve
-  d.push(`L ${lipRadius + lipWidth} ${height - cornerRadius}`);
+  // Left wall down
+  d.push(`L ${lipRadius + lipWidthLeft},${height - leftCornerRadius - bottomGap}`);
 
-  // Bottom-left quad curve
+  // Bottom-left quadratic curve
   d.push(
-    `Q ${lipRadius + lipWidth} ${height} ${lipRadius + lipWidth + cornerRadius} ${height}`
+    `Q ${lipRadius + lipWidthLeft},${height - bottomGap} ${lipRadius + lipWidthLeft + leftCornerRadius},${height - bottomGap}`
   );
 
   // Bottom edge
-  d.push(
-    `L ${width - lipRadius - lipWidth - cornerRadius} ${height}`
-  );
+  const rightWallX = width - lipRadius - rightLipWidth - rightGap;
+  d.push(`L ${rightWallX - rightCornerRadius},${height - bottomGap}`);
 
-  // Bottom-right quad curve
+  // Bottom-right quadratic curve
   d.push(
-    `Q ${width - lipRadius - lipWidth} ${height} ${width - lipRadius - lipWidth} ${height - cornerRadius}`
+    `Q ${rightWallX},${height - bottomGap} ${rightWallX},${height - rightCornerRadius - bottomGap}`
   );
 
   // Right wall up
-  d.push(`L ${width - lipRadius - lipWidth} ${lipRadius * 2}`);
+  d.push(`L ${rightWallX},${lipDiameter}`);
 
-  // Right lip horizontal
-  d.push(`L ${width - lipRadius} ${lipRadius * 2}`);
+  // Right lip extension
+  d.push(`L ${width - lipRadius - rightGap},${lipDiameter}`);
 
-  // Right lip arc
-  d.push(`A ${lipRadius} ${lipRadius} 0 0 0 ${width - lipRadius} 0`);
+  // --- Right lip: semicircular arc ---
+  // Arc center at (width - lipRadius - rightGap, lipRadius), radius=lipRadius, from 90° to 270° (clockwise in iOS = counter-clockwise in SVG)
+  // Start at bottom of right arc: (width - lipRadius - rightGap, lipDiameter)
+  // End at top of right arc: (width - lipRadius - rightGap, 0)
+  d.push(`A ${lipRadius} ${lipRadius} 0 0 0 ${width - lipRadius - rightGap},${0}`);
+
+  // Close path — connects back to start, creating the closed top
+  d.push('Z');
 
   return d.join(' ');
 }
 
 /**
- * Builds tick mark lines on the right inner wall of the beaker.
- * 3 ticks at 25%, 50%, 75% height of the liquid-fillable area.
+ * Builds tick marks for the right inner wall.
  */
 function buildTickLines(
   width: number,
   height: number,
   geo: BeakerGeometry
 ): Array<{ y: number; length: number }> {
-  const fillableTop = geo.innerTop;
-  const fillableBottom = height - geo.cornerRadius * 0.5;
+  const lipRadius = geo.lipRadius;
+  const ticksTopGap = lipRadius * 4;
+  const ticksBottomGap = geo.bottomGap * 1.5;
+  const fillableTop = ticksTopGap;
+  const fillableBottom = height - ticksBottomGap;
   const fillableHeight = fillableBottom - fillableTop;
 
-  return [0.25, 0.5, 0.75].map((fraction) => {
+  const numTicks = 13;
+  const ticks = [];
+  for (let i = 1; i < numTicks; i++) {
+    const fraction = i / numTicks;
     const y = fillableBottom - fraction * fillableHeight;
-    const isMajor = fraction === 0.5;
-    return {
+    const isMajor = i % 5 === 0;
+    ticks.push({
       y,
-      length: isMajor ? width * 0.15 : width * 0.075,
-    };
-  });
-}
-
-/**
- * Builds the SVG clip path for the liquid fill area (inner beaker shape with rounded bottom).
- */
-function buildLiquidClipPath(width: number, height: number, geo: BeakerGeometry): string {
-  const { wallLeft, wallRight, cornerRadius } = geo;
-  const d: string[] = [];
-
-  d.push(`M ${wallLeft} 0`);
-  d.push(`L ${wallLeft} ${height - cornerRadius}`);
-  d.push(`Q ${wallLeft} ${height} ${wallLeft + cornerRadius} ${height}`);
-  d.push(`L ${wallRight - cornerRadius} ${height}`);
-  d.push(`Q ${wallRight} ${height} ${wallRight} ${height - cornerRadius}`);
-  d.push(`L ${wallRight} 0`);
-  d.push('Z');
-
-  return d.join(' ');
+      length: isMajor ? width * 0.075 * 2 : width * 0.075,
+    });
+  }
+  return ticks;
 }
 
 export function Beaker({
@@ -155,30 +181,64 @@ export function Beaker({
   outlineColor = DEFAULT_OUTLINE_COLOR,
   children,
   className,
+  showTicks = true,
 }: BeakerProps) {
   const resolvedHeight = height ?? Math.round(width * HEIGHT_TO_WIDTH);
-  const geo = useMemo(() => computeGeometry(width, resolvedHeight), [width, resolvedHeight]);
+  const geo = useMemo(() => computeGeometry(width), [width]);
 
-  const beakerPath = useMemo(
-    () => buildBeakerPath(width, resolvedHeight, geo),
-    [width, resolvedHeight, geo]
+  // --- Build 3 beaker shapes (matching iOS exactly) ---
+  const { lipRadius, lipWidthLeft, cornerRadius, bottomGap } = geo;
+  const mediumRightLipWidth = lipWidthLeft * 9;
+  const mediumRightGap = lipWidthLeft * 5;
+  const mediumRightCornerRadius = cornerRadius * 1.5;
+  const smallRightLipWidth = lipWidthLeft * 9;
+  const smallRightGap = 2 * mediumRightGap;
+  const smallRightCornerRadius = mediumRightCornerRadius * 1.2;
+
+  // Large beaker (outermost outline)
+  const largePath = useMemo(
+    () => buildBeakerShapePath(
+      width, resolvedHeight, lipRadius, lipWidthLeft,
+      lipWidthLeft, cornerRadius, cornerRadius, 0, 0
+    ),
+    [width, resolvedHeight, lipRadius, lipWidthLeft, cornerRadius]
   );
 
-  const liquidClip = useMemo(
-    () => buildLiquidClipPath(width, resolvedHeight, geo),
-    [width, resolvedHeight, geo]
+  // Medium beaker (outer shadow boundary)
+  const mediumPath = useMemo(
+    () => buildBeakerShapePath(
+      width, resolvedHeight, lipRadius, lipWidthLeft,
+      mediumRightLipWidth, cornerRadius, mediumRightCornerRadius,
+      bottomGap, mediumRightGap
+    ),
+    [width, resolvedHeight, lipRadius, lipWidthLeft, mediumRightLipWidth, cornerRadius, mediumRightCornerRadius, bottomGap, mediumRightGap]
+  );
+
+  // Small beaker (inner shadow boundary)
+  const smallPath = useMemo(
+    () => buildBeakerShapePath(
+      width, resolvedHeight, lipRadius, lipWidthLeft,
+      smallRightLipWidth, cornerRadius, smallRightCornerRadius,
+      bottomGap, smallRightGap
+    ),
+    [width, resolvedHeight, lipRadius, lipWidthLeft, smallRightLipWidth, cornerRadius, smallRightCornerRadius, bottomGap, smallRightGap]
   );
 
   const ticks = useMemo(
-    () => buildTickLines(width, resolvedHeight, geo),
-    [width, resolvedHeight, geo]
+    () => (showTicks ? buildTickLines(width, resolvedHeight, geo) : []),
+    [width, resolvedHeight, geo, showTicks]
   );
 
+  // Liquid calculations
   const clampedLevel = Math.max(0, Math.min(1, liquidLevel));
   const liquidFillableHeight = resolvedHeight - geo.innerTop;
   const liquidTop = geo.innerTop + liquidFillableHeight * (1 - clampedLevel);
 
-  const clipId = useMemo(() => `beaker-clip-${Math.random().toString(36).slice(2, 9)}`, []);
+  const clipId = useMemo(() => `beaker-${Math.random().toString(36).slice(2, 9)}`, []);
+
+  // Tick position reference
+  const ticksRightGap = lipRadius + mediumRightGap + mediumRightLipWidth;
+  const tickX = width - ticksRightGap;
 
   return (
     <div
@@ -193,53 +253,80 @@ export function Beaker({
         className={styles.beakerSvg}
       >
         <defs>
-          <clipPath id={clipId}>
-            <path d={liquidClip} />
+          {/* Clip path for liquid fill — uses large beaker shape */}
+          <clipPath id={`${clipId}-liquid`}>
+            <path d={largePath} />
           </clipPath>
+
+          {/* Mask: large minus medium (outer shadow ring) */}
+          <mask id={`${clipId}-outerMask`}>
+            <path d={largePath} fill="white" />
+            <path d={mediumPath} fill="black" />
+          </mask>
+
+          {/* Mask: medium minus small (inner shadow ring) */}
+          <mask id={`${clipId}-innerMask`}>
+            <path d={mediumPath} fill="white" />
+            <path d={smallPath} fill="black" />
+          </mask>
         </defs>
 
-        {/* Liquid fill */}
+        {/* Layer 1: Liquid fill */}
         <rect
           x={0}
           y={liquidTop}
           width={width}
           height={resolvedHeight - liquidTop}
           fill={liquidColor}
-          clipPath={`url(#${clipId})`}
+          clipPath={`url(#${clipId}-liquid)`}
           className={styles.liquidFill}
         />
 
-        {/* Tick marks */}
+        {/* Layer 2: Outer tone shadow (between large and medium beaker) */}
+        <rect
+          x={0} y={0}
+          width={width} height={resolvedHeight}
+          fill="rgba(0, 0, 0, 0.12)"
+          mask={`url(#${clipId}-outerMask)`}
+        />
+
+        {/* Layer 3: Inner tone shadow (between medium and small beaker) */}
+        <rect
+          x={0} y={0}
+          width={width} height={resolvedHeight}
+          fill="rgba(0, 0, 0, 0.06)"
+          mask={`url(#${clipId}-innerMask)`}
+        />
+
+        {/* Layer 4: Tick marks (if enabled) */}
         {ticks.map((tick, i) => (
           <line
             key={i}
-            x1={geo.wallRight - STROKE_WIDTH / 2}
+            x1={tickX}
             y1={tick.y}
-            x2={geo.wallRight - STROKE_WIDTH / 2 - tick.length}
+            x2={tickX - tick.length}
             y2={tick.y}
             stroke={outlineColor}
-            strokeWidth={1}
-            opacity={0.5}
+            strokeWidth={i % 5 === 0 ? 1.2 : 0.8}
+            opacity={i % 5 === 0 ? 0.5 : 0.3}
           />
         ))}
 
-        {/* Beaker outline */}
+        {/* Layer 5: Beaker outline stroke */}
         <path
-          d={beakerPath}
+          d={largePath}
           fill="none"
           stroke={outlineColor}
-          strokeWidth={STROKE_WIDTH}
-          strokeLinecap="round"
+          strokeWidth={LINE_WIDTH}
           strokeLinejoin="round"
         />
       </svg>
 
-      {/* Children overlay (molecule grids, etc.) — clipped to liquid area */}
+      {/* Children overlay (molecules etc.) */}
       {children && (() => {
         const overlayTop = geo.innerTop + 4;
         const overlayHeight = resolvedHeight - geo.innerTop - geo.cornerRadius * 0.5 - 4;
-        // Clip molecules so they only appear within the water-filled region
-        const clipTop = Math.max(0, liquidTop - overlayTop);
+        const clipTop = liquidLevel === 0 ? 0 : Math.max(0, liquidTop - overlayTop);
         return (
           <div
             className={styles.childrenOverlay}

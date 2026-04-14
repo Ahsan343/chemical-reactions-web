@@ -5,14 +5,8 @@ import { type BalancedReactionDef, type Molecule, ElementType } from '../../../h
 import MoleculeView from '../MoleculeView/MoleculeView';
 import styles from './MoleculeGrid.module.scss';
 
-interface DroppedMoleculeInfo {
-  side: ElementType;
-  count: number;
-}
-
 interface MoleculeGridProps {
   reaction: BalancedReactionDef;
-  droppedMolecules: Map<string, DroppedMoleculeInfo>;
   showTutorial: boolean;
 }
 
@@ -25,37 +19,29 @@ interface GridMolecule {
 
 function buildGridMolecules(
   reaction: BalancedReactionDef,
-  droppedMolecules: Map<string, DroppedMoleculeInfo>,
 ): { reactantMolecules: GridMolecule[]; productMolecules: GridMolecule[] } {
   const reactantMolecules: GridMolecule[] = [];
   const productMolecules: GridMolecule[] = [];
 
+  // iOS pattern: always show exactly ONE of each molecule type in the grid.
+  // The grid acts as an infinite palette — drag creates copies in the beaker,
+  // and the molecule always stays in the grid for further dragging.
   for (const entry of reaction.reactants) {
-    const dropped = droppedMolecules.get(entry.molecule.id);
-    const droppedCount = dropped?.count ?? 0;
-    const remaining = entry.coefficient - droppedCount;
-    for (let i = 0; i < remaining; i++) {
-      reactantMolecules.push({
-        dragId: `reactant-${entry.molecule.id}-${i}`,
-        molecule: entry.molecule,
-        elementType: ElementType.Reactant,
-        instanceIndex: i,
-      });
-    }
+    reactantMolecules.push({
+      dragId: `reactant-${entry.molecule.id}-0`,
+      molecule: entry.molecule,
+      elementType: ElementType.Reactant,
+      instanceIndex: 0,
+    });
   }
 
   for (const entry of reaction.products) {
-    const dropped = droppedMolecules.get(entry.molecule.id);
-    const droppedCount = dropped?.count ?? 0;
-    const remaining = entry.coefficient - droppedCount;
-    for (let i = 0; i < remaining; i++) {
-      productMolecules.push({
-        dragId: `product-${entry.molecule.id}-${i}`,
-        molecule: entry.molecule,
-        elementType: ElementType.Product,
-        instanceIndex: i,
-      });
-    }
+    productMolecules.push({
+      dragId: `product-${entry.molecule.id}-0`,
+      molecule: entry.molecule,
+      elementType: ElementType.Product,
+      instanceIndex: 0,
+    });
   }
 
   return { reactantMolecules, productMolecules };
@@ -78,7 +64,8 @@ function DraggableMolecule({ gridMolecule, isTutorialTarget, compact }: Draggabl
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.4 : 1,
+    // iOS: source molecule stays fully visible (infinite palette — it doesn't leave the grid)
+    opacity: 1,
     cursor: isDragging ? 'grabbing' : 'grab',
     zIndex: isDragging ? 10 : 1,
   };
@@ -93,21 +80,17 @@ function DraggableMolecule({ gridMolecule, isTutorialTarget, compact }: Draggabl
     >
       <MoleculeView molecule={gridMolecule.molecule} atomSize={compact ? 20 : 28} />
       <span className={styles.moleculeName}>{gridMolecule.molecule.formula}</span>
-      {isTutorialTarget && (
-        <span className={styles.arrowHint} aria-hidden="true">&larr;</span>
-      )}
     </div>
   );
 }
 
 export default function MoleculeGrid({
   reaction,
-  droppedMolecules,
   showTutorial,
 }: MoleculeGridProps) {
   const { reactantMolecules, productMolecules } = useMemo(
-    () => buildGridMolecules(reaction, droppedMolecules),
-    [reaction, droppedMolecules],
+    () => buildGridMolecules(reaction),
+    [reaction],
   );
 
   const allMolecules = [...reactantMolecules, ...productMolecules];
@@ -128,9 +111,6 @@ export default function MoleculeGrid({
                 compact={isCompact}
               />
             ))}
-            {reactantMolecules.length === 0 && (
-              <span className={styles.emptyHint}>All placed</span>
-            )}
           </div>
         </div>
 
@@ -147,9 +127,6 @@ export default function MoleculeGrid({
                 compact={isCompact}
               />
             ))}
-            {productMolecules.length === 0 && (
-              <span className={styles.emptyHint}>All placed</span>
-            )}
           </div>
         </div>
       </div>
@@ -157,4 +134,4 @@ export default function MoleculeGrid({
   );
 }
 
-export type { MoleculeGridProps, DroppedMoleculeInfo };
+export type { MoleculeGridProps };

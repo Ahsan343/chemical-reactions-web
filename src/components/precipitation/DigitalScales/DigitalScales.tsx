@@ -7,7 +7,7 @@ interface DigitalScalesProps {
 }
 
 export default function DigitalScales({ mass, isDropTarget, showMass }: DigitalScalesProps) {
-  const displayText = showMass && mass !== null ? `${mass.toFixed(2)} g` : '';
+  const displayNumber = showMass && mass !== null ? mass.toFixed(2) : '0.00';
 
   return (
     <div className={styles.scales} aria-label="Digital scales">
@@ -17,7 +17,7 @@ export default function DigitalScales({ mass, isDropTarget, showMass }: DigitalS
       </div>
       <div className={styles.display}>
         <div className={styles.displayTextFrame}>
-          {displayText}
+          {displayNumber}
         </div>
       </div>
     </div>

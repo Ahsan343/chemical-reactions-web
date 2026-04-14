@@ -105,10 +105,31 @@ export default function BalancedReactionScreen() {
       setDraggingType(null);
       setActiveDragMolecule(null);
 
-      if (!over) return;
-
-      const data = active.data.current as { molecule: Molecule; elementType: ElementType } | undefined;
+      const data = active.data.current as {
+        molecule: Molecule;
+        elementType: ElementType;
+        source?: 'beaker';
+      } | undefined;
       if (!data) return;
+
+      // If molecule was dragged FROM a beaker (drag-out to remove)
+      if (data.source === 'beaker') {
+        // Remove if dropped outside any beaker, or on the wrong beaker
+        const overId = over?.id as string | undefined;
+        const moleculeType = resolveElementType(data);
+        const droppedOnOwnBeaker =
+          (overId === 'reactant-beaker' && moleculeType === 'reactant') ||
+          (overId === 'product-beaker' && moleculeType === 'product');
+
+        if (!droppedOnOwnBeaker) {
+          // Dragged out — remove from beaker
+          state.removeMoleculeFromBeaker(data.molecule, data.elementType);
+        }
+        return;
+      }
+
+      // Normal drag from grid to beaker (add)
+      if (!over) return;
 
       const overId = over.id as string;
       const moleculeType = resolveElementType(data);
@@ -176,14 +197,18 @@ export default function BalancedReactionScreen() {
       case 'selectReaction':
         return [
           { text: 'Chemical reactions are represented as an equation. ' },
-          { text: 'Let\'s find out more about that, choose a reaction first.', bold: true },
+          { text: 'Choose a reaction and then let\'s find out more about that!', bold: true },
         ];
 
       // Educational intro (iOS steps 2-5)
       case 'introFormulas':
         return [
-          { text: 'A reaction is separated in two parts: left part where the reactants are and right part where the products are. The compounds are represented as ' },
-          { text: 'Empirical Formulas', bold: true },
+          { text: 'A reaction is separated in two parts: the left part where the ' },
+          { text: 'reactants', bold: true },
+          { text: ' are, and the right part where the ' },
+          { text: 'products', bold: true },
+          { text: ' are. The compounds are represented as ' },
+          { text: 'empirical formulas', bold: true },
           { text: ', which indicates the atoms ratio within the molecule.' },
         ];
       case 'introFormulaExample': {
@@ -204,13 +229,13 @@ export default function BalancedReactionScreen() {
           const parts: Array<{ text: string; bold?: boolean }> = [
             { text: 'For example, in this case ' },
             { text: r1.molecule.formula, bold: true },
-            { text: ` is ${r1.molecule.name}, and the molecule of ${r1.molecule.name} has ${describeAtoms(r1.molecule)}.` },
+            { text: ` is ${r1.molecule.name} which has ${describeAtoms(r1.molecule)}.` },
           ];
           if (r2) {
             parts.push(
               { text: ' ' },
               { text: r2.molecule.formula, bold: true },
-              { text: ` is ${r2.molecule.name}, and the molecule of ${r2.molecule.name} has ${describeAtoms(r2.molecule)}.` },
+              { text: ` is ${r2.molecule.name} which has ${describeAtoms(r2.molecule)}.` },
             );
           }
           return parts;
@@ -219,17 +244,15 @@ export default function BalancedReactionScreen() {
       }
       case 'introCoefficients':
         return [
-          { text: 'But this is not the only number that are involved in the equation. ' },
-          { text: 'Stoichiometric Coefficients', bold: true },
-          { text: ' are values that are written on the left of the compound to determine how many molecules of it there is.' },
+          { text: 'But this is not the only numbers that are involved in the equation. ' },
+          { text: 'Stoichiometric coefficients', bold: true },
+          { text: ' are values that are written on the left of the compound to determine how many molecules there are.' },
         ];
       case 'introBalanced':
         return [
           { text: 'These values allow the reaction to be ' },
           { text: 'balanced', bold: true },
-          { text: '. All chemical reactions, as the equation they are, have to be ' },
-          { text: 'balanced', bold: true },
-          { text: ', meaning that there has to the ' },
+          { text: '. All chemical reactions, as the equation they are, have to be balanced, meaning that there has to be the ' },
           { text: 'same amount of atoms on each side of the equation', bold: true },
           { text: '.' },
         ];
@@ -247,7 +270,7 @@ export default function BalancedReactionScreen() {
         if (state.completedCount === 0) {
           // First reaction
           return [
-            { text: "Let's learn how to do that right now with this equation. At this moment there aren't any compounds on either side. " },
+            { text: "Let's learn how to do that right now with this equation. At the moment, there aren't any compounds on either side. " },
             { text: 'Drag the molecules to the corresponding side to balance the equation.', bold: true },
           ];
         } else {
@@ -264,14 +287,14 @@ export default function BalancedReactionScreen() {
         const isLastReaction = state.completedCount >= state.reactions.length;
         if (isLastReaction) {
           return [
-            { text: 'Equation is balanced!', bold: true },
-            { text: ' This is how the real equation for this reaction looks like. There are the same amount of atoms on both sides of the equation. ' },
-            { text: 'Perfect! Now you know balancing equations.', bold: true },
+            { text: 'The equation is balanced!', bold: true },
+            { text: ' This is what the real equation for this reaction looks like. There are the same number of atoms on both sides of the equation. ' },
+            { text: 'Perfect! Now you know how to balance equations.', bold: true },
           ];
         } else {
           return [
-            { text: 'Equation is balanced!', bold: true },
-            { text: ' This is how the real equation for this reaction looks like. There are the same amount of atoms on both sides of the equation. ' },
+            { text: 'The equation is balanced!', bold: true },
+            { text: ' This is what the real equation for this reaction looks like. There are the same number of atoms on both sides of the equation. ' },
             { text: 'Choose another one.', bold: true },
           ];
         }
@@ -341,15 +364,16 @@ export default function BalancedReactionScreen() {
                     id="reactant-beaker"
                     elementType="reactant"
                     highlightState={reactantHighlight}
-                    width={180}
-                    height={200}
+                    width={220}
+                    height={260}
                     droppedEntries={reactantDropped}
+                    onRemoveMolecule={dragEnabled ? state.removeMoleculeFromBeaker : undefined}
                   />
 
                   <div className={styles.reactionArrow}>
                     <svg width="48" height="28" viewBox="0 0 48 28">
-                      <line x1="2" y1="14" x2="38" y2="14" stroke="rgb(220, 84, 59)" strokeWidth="3" strokeLinecap="round" />
-                      <polyline points="32,6 42,14 32,22" fill="none" stroke="rgb(220, 84, 59)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="2" y1="14" x2="36" y2="14" stroke="rgb(200, 50, 50)" strokeWidth="5" strokeLinecap="round" />
+                      <polyline points="30,5 44,14 30,23" fill="none" stroke="rgb(200, 50, 50)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
 
@@ -357,9 +381,10 @@ export default function BalancedReactionScreen() {
                     id="product-beaker"
                     elementType="product"
                     highlightState={productHighlight}
-                    width={180}
-                    height={200}
+                    width={220}
+                    height={260}
                     droppedEntries={productDropped}
+                    onRemoveMolecule={dragEnabled ? state.removeMoleculeFromBeaker : undefined}
                   />
                 </div>
               </HighlightOverlay>
@@ -368,7 +393,6 @@ export default function BalancedReactionScreen() {
             <div className={styles.sidePanel}>
               <MoleculeGrid
                 reaction={state.selectedReaction!}
-                droppedMolecules={state.droppedMolecules}
                 showTutorial={state.showTutorial}
               />
             </div>

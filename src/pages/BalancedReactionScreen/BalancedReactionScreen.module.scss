@@ -16,7 +16,7 @@
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
-  margin-bottom: 4px;
+  margin-bottom: 16px;
 }
 
 .equationArea {
@@ -47,17 +47,20 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 8px;
   min-width: 0;
+  padding-top: 8px;
 }
 
 .beakerRow {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  gap: 32px;
+  gap: 40px;
   width: 100%;
+  margin-top: 20px;
+  margin-bottom: 32px;
 }
 
 .reactionArrow {
@@ -75,10 +78,10 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  gap: 16px;
+  gap: 32px;
   width: 100%;
   flex-shrink: 0;
-  padding: 4px 0;
+  padding: 16px 0 8px;
 }
 
 .sidePanel {
@@ -169,20 +172,17 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 8px;
-  border: 2px solid rgb(220, 84, 59);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  padding: 4px;
   cursor: grabbing;
   pointer-events: none;
   z-index: 9999;
+  /* iOS: no border, no shadow, no background — just the molecule moves with the finger */
 }
 
 .dragOverlayLabel {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: rgb(64, 64, 64);
+  color: rgb(80, 80, 80);
   user-select: none;
 }
 

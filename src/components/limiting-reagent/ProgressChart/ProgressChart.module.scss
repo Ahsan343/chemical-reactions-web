@@ -11,7 +11,6 @@
   justify-content: center;
   gap: 14px;
   width: 160px;
-  min-height: 160px;
   border-left: 1.5px solid rgb(40, 40, 40);
   border-bottom: 1.5px solid rgb(40, 40, 40);
   border-right: 1.5px solid rgb(40, 40, 40);
@@ -20,16 +19,56 @@
 }
 
 .column {
+  position: relative;
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
-  gap: 3px;
+  width: 14px;
 }
 
+/* Settled dot — positioned absolutely from bottom */
 .molecule {
+  position: absolute;
   border-radius: 50%;
-  transition: transform 0.3s ease, opacity 0.3s ease;
   flex-shrink: 0;
+  transition: bottom 0.3s ease, opacity 0.35s ease;
+}
+
+/* Dropping dot — appears at top, fades in, then drops to target */
+.moleculeDrop {
+  position: absolute;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation:
+    dotFadeIn var(--fade-duration, 0.5s) linear forwards,
+    dotDrop var(--drop-duration, 0.5s) ease-in var(--fade-duration, 0.5s) forwards;
+  /* Start at the top offset */
+  transform: translateY(var(--drop-start, 0px));
+  opacity: 0;
+}
+
+/* Fade in at the top position (scale 0→1, opacity 0→1) */
+@keyframes dotFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(var(--drop-start, 0px)) scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(var(--drop-start, 0px)) scale(1);
+  }
+}
+
+/* Drop from the top position down to final position (translateY → 0) */
+@keyframes dotDrop {
+  0% {
+    opacity: 1;
+    transform: translateY(var(--drop-start, 0px)) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .axis {

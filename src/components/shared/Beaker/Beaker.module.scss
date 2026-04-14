@@ -7,6 +7,8 @@
 
 .beakerSvg {
   display: block;
+  position: relative;
+  z-index: 1;
 }
 
 .liquidFill {
@@ -17,6 +19,12 @@
   position: absolute;
   overflow: hidden;
   pointer-events: none;
+  z-index: 2;
+
+  /* Allow clickable children (like removable molecules) to receive events */
+  * {
+    pointer-events: auto;
+  }
 }
 
 // ----- FillableBeaker -----
@@ -120,4 +128,24 @@
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
+}
+
+// ----- Particle Animation for Shaking -----
+
+@keyframes particleFall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(120px) translateX(var(--particle-offset, 0px));
+  }
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFall 0.6s ease-in forwards;
+  pointer-events: none;
 }

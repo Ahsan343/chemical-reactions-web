@@ -47,7 +47,7 @@ export const limitingReagentReactions: LimitingReagentReactionDef[] = [
     product: {
       formula: 'NaNO₃',
       state: ElementState.Aqueous,
-      color: 'rgb(0, 0, 0)',
+      color: 'rgb(0, 0, 0)', // iOS .black
       molarMass: 85,
     },
     byProducts: [

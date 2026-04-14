@@ -44,7 +44,7 @@
   display: flex;
   flex: 1;
   min-height: 0;
-  gap: 16px;
+  gap: 20px;
 }
 
 /* Left column: containers + beaker + toggle */
@@ -73,16 +73,14 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 12px;
+  gap: 20px;
   flex-shrink: 0;
 }
 
 .scalesArea {
   flex-shrink: 0;
   align-self: flex-end;
-  padding-bottom: 4px;
-  transform: scale(0.85);
-  transform-origin: bottom center;
+  padding-bottom: 0;
 }
 
 .beakerWrapper {
@@ -194,18 +192,18 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   overflow-y: auto;
-  padding: 8px 6px;
+  padding: 12px 8px;
   min-height: 0;
 }
 
 .equationGroup {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  gap: 6px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 
   &:last-child {
     border-bottom: none;
@@ -221,9 +219,9 @@
 
 .equationLine {
   font-size: 14px;
-  font-weight: 500;
-  color: rgb(64, 64, 64);
-  line-height: 1.6;
+  font-weight: 400;
+  color: rgb(60, 60, 60);
+  line-height: 1.8;
   white-space: nowrap;
 }
 

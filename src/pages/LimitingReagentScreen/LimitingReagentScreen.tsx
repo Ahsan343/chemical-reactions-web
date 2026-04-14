@@ -405,8 +405,23 @@ export default function LimitingReagentScreen() {
         </div>
       </div>
 
-      <div className={styles.mainContent}>
-        <div className={styles.leftColumn}>
+      {/* Math equations — TOP CENTER */}
+      {hasReaction && (
+        <div className={styles.equationPanel}>
+          <LimitingEquationView
+            equationState={state.equationState}
+            reactionProgress={state.reactionProgress}
+            reaction={state.selectedReaction!}
+            limitingMoles={state.limitingMoles}
+            volume={state.volume}
+          />
+        </div>
+      )}
+
+      {/* CENTER-BOTTOM: beaker column (bottles+beaker) + chart side by side */}
+      <div className={styles.centerArea}>
+        {/* Left: bottles stacked above beaker */}
+        <div className={styles.beakerColumn}>
           <HighlightOverlay highlighted={leftHighlighted}>
             <div className={styles.containersRow}>
               <ShakingContainer
@@ -434,8 +449,8 @@ export default function LimitingReagentScreen() {
                 waterLevel={state.waterLevel}
                 onWaterLevelChange={state.setWaterLevel}
                 disabled={exploreMode ? !hasReaction || state.isReacting : state.inputPhase !== 'setWaterLevel'}
-                liquidColor="rgb(218, 238, 245)"
-                width={160}
+                liquidColor="rgb(100, 185, 240)"
+                width={200}
               >
                 <BeakerMoleculeGrid
                   molecules={state.allMolecules}
@@ -443,54 +458,65 @@ export default function LimitingReagentScreen() {
                   animated
                 />
               </FillableBeaker>
+              {hasReaction && state.selectedReaction && (
+                <div className={styles.compoundIndicators}>
+                  <div className={styles.compoundLabel}>
+                    <div
+                      className={styles.compoundDot}
+                      style={{ backgroundColor: state.selectedReaction.limitingReactant.color }}
+                    />
+                    {state.selectedReaction.limitingReactant.formula}
+                  </div>
+                  <div className={styles.compoundLabel}>
+                    <div
+                      className={styles.compoundDot}
+                      style={{ backgroundColor: state.selectedReaction.excessReactant.color }}
+                    />
+                    {state.selectedReaction.excessReactant.formula}
+                  </div>
+                  <div className={styles.compoundLabel}>
+                    <div
+                      className={styles.compoundDot}
+                      style={{ backgroundColor: state.selectedReaction.product.color }}
+                    />
+                    {state.selectedReaction.product.formula}
+                  </div>
+                </div>
+              )}
             </div>
           </HighlightOverlay>
         </div>
 
-        <div className={styles.rightColumn}>
-          {hasReaction && (
-            <div className={styles.equationPanel}>
-              <LimitingEquationView
-                equationState={state.equationState}
-                reactionProgress={state.reactionProgress}
-                reaction={state.selectedReaction!}
-                limitingMoles={state.limitingMoles}
-                volume={state.volume}
-              />
-            </div>
-          )}
-
-          <div className={styles.bottomRow}>
-            {hasReaction && (state.moleculeCounts.limiting > 0 || state.moleculeCounts.excess > 0 || state.reactionProgress > 0) && (
-              <div className={styles.progressArea}>
-                <ProgressChart
-                  progress={state.reactionProgress}
-                  reactantColor={state.selectedReaction!.limitingReactant.color}
-                  excessColor={state.selectedReaction!.excessReactant.color}
-                  productColor={state.selectedReaction!.product.color}
-                  limitingLabel={state.selectedReaction!.limitingReactant.formula}
-                  excessLabel={state.selectedReaction!.excessReactant.formula}
-                  productLabel={state.selectedReaction!.product.formula}
-                  limitingCount={state.moleculeCounts.limiting}
-                  excessCount={state.moleculeCounts.excess}
-                  limitingCoefficient={1}
-                  excessCoefficient={state.selectedReaction!.excessReactant.coefficient}
-                  maxCount={30}
-                />
-              </div>
-            )}
-
-            <div className={styles.beakyArea}>
-              <BeakyBox
-                statement={beakyStatement}
-                onNext={handleNext}
-                onBack={handleBack}
-                canGoNext={state.canGoNext}
-                showBack={showBack}
-              />
-            </div>
+        {/* Right: chart aligned to bottom of beaker */}
+        {hasReaction && (state.moleculeCounts.limiting > 0 || state.moleculeCounts.excess > 0 || state.reactionProgress > 0) && (
+          <div className={styles.progressArea}>
+            <ProgressChart
+              progress={state.reactionProgress}
+              reactantColor={state.selectedReaction!.limitingReactant.color}
+              excessColor={state.selectedReaction!.excessReactant.color}
+              productColor={state.selectedReaction!.product.color}
+              limitingLabel={state.selectedReaction!.limitingReactant.formula}
+              excessLabel={state.selectedReaction!.excessReactant.formula}
+              productLabel={state.selectedReaction!.product.formula}
+              limitingCount={state.moleculeCounts.limiting}
+              excessCount={state.moleculeCounts.excess}
+              limitingCoefficient={1}
+              excessCoefficient={state.selectedReaction!.excessReactant.coefficient}
+              maxCount={30}
+            />
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* BeakyBox — bottom right */}
+      <div className={styles.beakyArea}>
+        <BeakyBox
+          statement={beakyStatement}
+          onNext={handleNext}
+          onBack={handleBack}
+          canGoNext={state.canGoNext}
+          showBack={showBack}
+        />
       </div>
     </div>
   );

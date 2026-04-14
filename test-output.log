@@ -1,0 +1,54 @@
+
+> chemical-reactions-webapp@0.1.0 test
+> react-scripts test --watchAll=false --ci
+
+PASS src/helper/chemistry/__tests__/molarMass.test.ts
+PASS src/helper/chemistry/__tests__/reactionBalancer.test.ts
+FAIL src/constants/reactions/__tests__/reactions.test.ts
+  ● Reactions Data Integrity › Cross-Reaction Consistency › should not reuse molecule IDs across balanced reactions
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      466 |       balancedReactions.forEach((reaction) => {
+      467 |         reaction.reactants.forEach((entry) => {
+    > 468 |           expect(allMoleculeIds.has(entry.molecule.id)).toBe(false);
+          |                                                         ^
+      469 |           allMoleculeIds.add(entry.molecule.id);
+      470 |         });
+      471 |
+
+      at forEach (src/constants/reactions/__tests__/reactions.test.ts:468:57)
+          at Array.forEach (<anonymous>)
+      at forEach (src/constants/reactions/__tests__/reactions.test.ts:467:28)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/constants/reactions/__tests__/reactions.test.ts:466:25)
+
+  ● Reactions Data Integrity › Cross-Reaction Consistency › should not share molecule definitions across balanced reactions
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      482 |       balancedReactions.forEach((reaction) => {
+      483 |         reaction.reactants.forEach((entry) => {
+    > 484 |           expect(molecules.has(entry.molecule)).toBe(false);
+          |                                                 ^
+      485 |           molecules.add(entry.molecule);
+      486 |         });
+      487 |
+
+      at forEach (src/constants/reactions/__tests__/reactions.test.ts:484:49)
+          at Array.forEach (<anonymous>)
+      at forEach (src/constants/reactions/__tests__/reactions.test.ts:483:28)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/constants/reactions/__tests__/reactions.test.ts:482:25)
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       2 failed, 111 passed, 113 total
+Snapshots:   0 total
+Time:        3.857 s
+Ran all test suites.

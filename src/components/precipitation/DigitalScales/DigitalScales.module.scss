@@ -1,69 +1,87 @@
-$scales-width: 120px;
-$height: $scales-width; // iOS uses 1:1 ratio
+$scales-width: 140px;
+$scales-height: 160px;
 
 .scales {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: $scales-width;
-  height: $height;
+  height: $scales-height;
+  gap: 4px;
 }
 
-// Upper container: 80% width, 70% height
+// Upper container: main balance body
 .container {
-  width: 80%;
-  height: 70%;
+  width: 100%;
+  height: 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  border: 1px solid rgb(130, 130, 130);
+  justify-content: flex-start;
   position: relative;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
+  background: linear-gradient(180deg, rgb(100, 100, 100) 0%, rgb(80, 80, 80) 100%);
+  border-radius: 8px 8px 0 0;
+  padding-top: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .containerEmphasised {
-  border-width: 2px;
-  border-color: rgb(220, 84, 59);
+  background: linear-gradient(180deg, rgb(110, 110, 110) 0%, rgb(90, 90, 90) 100%);
+  box-shadow: 0 3px 8px rgba(220, 84, 59, 0.25), inset 0 -2px 4px rgba(0, 0, 0, 0.3);
 }
 
-// Small dark platform on top of base
+// Wide flat platform on top where items are placed
 .platform {
-  width: 40%;
-  height: 6%;
-  background: rgb(64, 64, 64);
+  width: 85%;
+  height: 12px;
+  background: linear-gradient(180deg, rgb(120, 120, 120) 0%, rgb(100, 100, 100) 100%);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  margin-bottom: 8px;
+  transition: box-shadow 0.2s ease;
+
+  .containerEmphasised & {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -2px 0 rgba(220, 84, 59, 0.3);
+  }
 }
 
-// Thin gray base below platform
+// Base body of the scale
 .containerBase {
-  width: 100%;
-  height: 6%;
-  background: rgb(130, 130, 130);
+  width: 95%;
+  height: 70px;
+  background: linear-gradient(180deg, rgb(95, 95, 95) 0%, rgb(75, 75, 75) 100%);
+  border-radius: 0 0 6px 6px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-// Lower display area: 30% height
+// Display area: shows the weight
 .display {
   width: 100%;
-  height: 30%;
-  background: rgb(64, 64, 64);
-  border-radius: 0 0 25% 25%;
+  height: 52px;
+  background: linear-gradient(180deg, rgb(64, 64, 64) 0%, rgb(50, 50, 50) 100%);
+  border-radius: 0 0 8px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .displayTextFrame {
-  width: 65%;
-  height: 60%;
-  background: white;
-  border: 1px solid rgb(130, 130, 130);
-  border-radius: 2px;
+  width: 75%;
+  height: 32px;
+  background: rgb(20, 20, 20);
+  border: 1px solid rgb(100, 100, 100);
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgb(40, 40, 40);
-  min-height: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: rgb(220, 84, 59);
+  letter-spacing: 1px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }

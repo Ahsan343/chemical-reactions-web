@@ -6,15 +6,15 @@ export const AtomColors = {
 } as const;
 
 export const MoleculeColors = {
-  A: 'rgb(0, 122, 255)',   // SwiftUI .blue
-  B: 'rgb(255, 59, 48)',   // SwiftUI .red
-  C: 'rgb(225, 132, 19)',
-  D: 'rgb(213, 111, 62)',
-  E: 'rgb(175, 82, 222)',  // SwiftUI .purple
-  F: 'rgb(84, 35, 68)',
-  G: 'rgb(156, 109, 138)',
-  H: 'rgb(27, 153, 139)',
-  I: 'rgb(221, 183, 113)',
+  A: 'rgb(0, 122, 255)',   // iOS .blue
+  B: 'rgb(255, 59, 48)',   // iOS .red
+  C: 'rgb(255, 150, 0)',   // Brighter orange
+  D: 'rgb(255, 100, 50)',  // Brighter orange-red
+  E: 'rgb(175, 82, 222)',  // iOS .purple
+  F: 'rgb(120, 60, 100)',  // Saturated purple-red
+  G: 'rgb(200, 100, 180)', // Vibrant pink
+  H: 'rgb(30, 200, 180)',  // Vibrant teal
+  I: 'rgb(255, 200, 80)',  // Vibrant gold
 } as const;
 
 export const PrecipitationColors = {
