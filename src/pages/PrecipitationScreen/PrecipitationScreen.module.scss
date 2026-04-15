@@ -315,3 +315,190 @@
   font-size: 16px;
   font-style: italic;
 }
+
+.placeholderContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.placeholderText {
+  text-align: center;
+}
+
+/* ===== Responsive: Tablet (≤1024px) ===== */
+@media (max-width: 1024px) {
+  .screen {
+    padding: 10px 12px 10px 48px;
+    overflow-y: auto;
+  }
+
+  .mainContent {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .leftColumn {
+    width: 100%;
+    min-width: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 16px;
+    padding: 0;
+  }
+
+  .containersRow {
+    margin-left: 0;
+  }
+
+  .middleColumn {
+    flex: 1 1 280px;
+    min-width: 260px;
+    padding: 0;
+  }
+
+  .rightColumn {
+    width: 100%;
+    flex: 1 1 100%;
+    padding-right: 0;
+  }
+
+  .equationPanel {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+    overflow-y: visible;
+  }
+
+  .equationGroup {
+    flex: 1 1 200px;
+    min-width: 180px;
+  }
+}
+
+/* ===== Responsive: Mobile (≤640px) ===== */
+@media (max-width: 640px) {
+  .screen {
+    padding: 8px 8px 8px 44px;
+  }
+
+  .topBar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .equationArea {
+    justify-content: flex-start;
+    padding-left: 0;
+    font-size: 13px;
+  }
+
+  .controls {
+    justify-content: center;
+  }
+
+  .mainContent {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .leftColumn {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .containersRow {
+    justify-content: center;
+    gap: 10px;
+    margin-left: 0;
+  }
+
+  .beakerScalesRow {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .scalesArea {
+    align-self: center;
+  }
+
+  .middleColumn {
+    flex: none;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .tableWrapper {
+    max-width: 100%;
+  }
+
+  .chartPlaceholder {
+    max-width: 100%;
+  }
+
+  .chartBars {
+    height: 120px;
+    gap: 18px;
+  }
+
+  .rightColumn {
+    width: 100%;
+    flex: none;
+    padding-right: 0;
+  }
+
+  .equationPanel {
+    flex-direction: column;
+    gap: 10px;
+    padding: 8px 4px;
+  }
+
+  .equationGroup {
+    min-width: 0;
+  }
+
+  .equationLine {
+    font-size: 13px;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .equationFraction {
+    margin: 0 2px;
+  }
+
+  .fractionLine {
+    min-width: 40px;
+  }
+
+  .runAgainButton {
+    font-size: 12px;
+    padding: 4px 12px;
+  }
+}
+
+/* ===== Responsive: Small phones (≤375px) ===== */
+@media (max-width: 375px) {
+  .screen {
+    padding: 6px 4px 6px 40px;
+  }
+
+  .equationLine {
+    font-size: 12px;
+  }
+
+  .chartBars {
+    height: 100px;
+    gap: 12px;
+    padding: 6px 12px;
+  }
+}

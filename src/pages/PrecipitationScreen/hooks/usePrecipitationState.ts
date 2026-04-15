@@ -35,7 +35,9 @@ type Phase =
   | 'reaction2'
   // Post-reaction2 (iOS step 14)
   | 'endReaction2'
-  | 'complete';
+  | 'complete'
+  // iOS PrepareNewReaction — transition to second reaction
+  | 'prepareSecondReaction';
 
 type EquationState = 'blank' | 'showMolarity' | 'showAll';
 
@@ -91,6 +93,8 @@ function getHighlightsForPhase(phase: Phase): HighlightElement[] {
       return ['unknownReactantMolarMass', 'correctMetalRow'];
     case 'complete':
       return []; // no dimming
+    case 'prepareSecondReaction':
+      return []; // no dimming during transition
     default:
       return [];
   }
@@ -184,6 +188,8 @@ export interface PrecipitationState {
   showRunAgain: boolean;
   /** iOS HighlightedElements — which elements are active/highlighted at this step */
   highlights: HighlightElement[];
+  /** Which experiment run: 1 = first reaction, 2 = second reaction */
+  reactionRun: 1 | 2;
 
   selectReaction: (reaction: PrecipitationReactionDef) => void;
   toggleBeakerView: (view: BeakerView) => void;
@@ -216,6 +222,9 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [productMolecules, setProductMolecules] = useState<MoleculeDot[]>([]);
   const reactionAnimRef = useRef<number | null>(null);
+  // Track which experiment run we're on (iOS runs firstReaction + secondReaction sequentially)
+  const [reactionRun, setReactionRun] = useState<1 | 2>(1);
+  const [completedReactionIds, setCompletedReactionIds] = useState<string[]>([]);
 
   /**
    * Animate reactionProgress from `from` to `to` over `durationMs` (iOS: 3s linear).
@@ -266,9 +275,12 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     return unknownReactantMoles * unknownReactantMolarMass;
   }, [unknownReactantMoles, unknownReactantMolarMass]);
 
+  // iOS: productMolesProduced = coeff × reactingUnknownReactantMoles
+  // For reaction1 (coeff=1): 1:1 ratio. For reaction2 (coeff=2): product = 2 × unknown moles reacting
   const productMolesProduced = useMemo(() => {
     if (!selectedReaction) return 0;
-    return unknownReactantMoles;
+    const coeff = selectedReaction.unknownReactant.coefficient;
+    return coeff * unknownReactantMoles;
   }, [selectedReaction, unknownReactantMoles]);
 
   const productMassProduced = useMemo(() => {
@@ -439,11 +451,14 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       case 'revealMetal':
         return true;
       case 'complete':
-        return false;
+        // iOS: if first reaction done and there's another reaction, allow proceeding to second
+        return reactionRun === 1;
+      case 'prepareSecondReaction':
+        return true;
       default:
         return false;
     }
-  }, [phase, waterLevel, knownMoleculeCount, unknownMoleculeCount, precipitatePosition, reactionProgress, exploreMode]);
+  }, [phase, waterLevel, knownMoleculeCount, unknownMoleculeCount, precipitatePosition, reactionProgress, exploreMode, reactionRun]);
 
   const showBack = phase !== 'chooseReaction';
 
@@ -573,13 +588,49 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       // Post reaction2
       case 'endReaction2':
         setPhase('complete');
-        setScreenCompleted('precipitation');
-        saveToStorage(STORAGE_KEY, { completed: true });
-        tagAction('screenCompleted', 'precipitation', { reactionId: selectedReaction?.id });
+        if (selectedReaction) {
+          setCompletedReactionIds(prev => [...prev, selectedReaction.id]);
+        }
+        if (reactionRun === 2) {
+          // Both reactions done
+          setScreenCompleted('precipitation');
+          saveToStorage(STORAGE_KEY, { completed: true });
+        }
+        tagAction('screenCompleted', 'precipitation', { reactionId: selectedReaction?.id, run: reactionRun });
         break;
 
       case 'complete':
+        if (reactionRun === 1) {
+          // iOS PrepareNewReaction: transition to second reaction
+          setPhase('prepareSecondReaction');
+          tagAction('nextPhase', 'precipitation', { from: 'complete', to: 'prepareSecondReaction' });
+        }
         break;
+
+      case 'prepareSecondReaction': {
+        // Auto-select the other reaction (iOS: model.setNextReaction())
+        const otherReaction = precipitationReactions.find(r =>
+          !completedReactionIds.includes(r.id) && r.id !== selectedReaction?.id
+        ) ?? precipitationReactions.find(r => r.id !== selectedReaction?.id);
+        if (otherReaction) {
+          setSelectedReaction(otherReaction);
+          const metal = getRandomMetal(otherReaction.metals);
+          setCurrentMetal(metal);
+        }
+        // Reset all experiment state for second run
+        setKnownMoleculeCount(0);
+        setUnknownMoleculeCount(0);
+        setReactionProgress(0);
+        setPrecipitatePosition('beaker');
+        setEquationState('blank');
+        setMetalRevealed(false);
+        setBeakerView('microscopic');
+        setProductMolecules([]);
+        setReactionRun(2);
+        setPhase('explainPrecipitation');
+        tagAction('prepareSecondReaction', 'precipitation', { newReactionId: otherReaction?.id });
+        break;
+      }
       default:
         break;
     }
@@ -668,6 +719,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     isDropTarget,
     showRunAgain,
     highlights,
+    reactionRun,
 
     knownMolecules,
     unknownMolecules,

@@ -128,12 +128,15 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
     // Educational intro (iOS steps 2-3)
     case 'explainPrecipitation':
       return [[
-        { text: 'This is a Precipitation Reaction. How do I know? Well, one way is to notice that one of the product is a solid (s), so once reaction takes place, this solid will be produced and deposit as a precipitate. In this case ' },
+        { text: 'This is a precipitation reaction. How do I know? Well, one way is to notice that one of the products is a ' },
+        { text: 'solid (s)', bold: true },
+        { text: ', so once the reaction takes place, this solid will be produced and deposit as a precipitate. In this case, ' },
         { text: state.selectedReaction?.product.formula ?? 'CaCO₃', bold: true },
+        { text: '.' },
       ]];
     case 'explainUnknownMetal':
       return [[
-        { text: 'But there\'s something else that is strange about the reaction right? Well, ' },
+        { text: 'But there\'s something else that is strange about this reaction right? Well, ' },
         { text: 'M', bold: true, color: 'rgb(220, 84, 59)' },
         { text: ' is not a real element. M in this case represents just an alkaline metal. We will learn how stoichiometry can tell us which one of those 3 components is ' },
         { text: 'M', bold: true, color: 'rgb(220, 84, 59)' },
@@ -142,13 +145,13 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
 
     case 'setWaterLevel':
       return [
-        [{ text: 'So this is a reaction that takes place in water, let\'s set the volume of water in the beaker.' }],
+        [{ text: 'This is a reaction that takes place in water, so let\'s set the volume of water in the beaker.' }],
         [{ text: 'Use the slider to set the volume.', bold: true }],
       ];
     case 'addKnown':
       return [
         [
-          { text: 'Perfect! Now shake ' },
+          { text: 'Perfect! Now, shake ' },
           { text: state.selectedReaction?.knownReactant.formula ?? 'known reactant', bold: true },
           { text: ' to prepare a solution of it.' },
         ],
@@ -157,40 +160,43 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
     case 'addUnknown':
       return [
         [
-          { text: `You added ${state.knownReactantMoles.toFixed(4)} moles of ` },
+          { text: `You added ${state.knownReactantMoles.toFixed(2)} moles of ` },
           { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
-          { text: '. Now go ahead and add ' },
+          { text: '. Now, go ahead and add ' },
           { text: state.metalRevealed
               ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
               : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
             bold: true },
           { text: ' and let\'s watch them react.' },
         ],
-        [{ text: 'Notice the amount of grams added at the shaker. Keep shaking to see it react.', bold: true }],
+        [{ text: 'Notice the amount of grams added by the shaker. Keep shaking to see it react.', bold: true }],
       ];
-    case 'reaction1':
+    case 'reaction1': {
+      const reaction1Grams = state.unknownReactantMassAdded;
+      const reaction1GramName = reaction1Grams === 1 ? 'gram' : 'grams';
       return [
         [
           { text: 'Perfect! You added ' },
-          { text: `${state.unknownReactantMassAdded.toFixed(2)} grams`, bold: true },
+          { text: `${reaction1Grams.toFixed(2)} ${reaction1GramName}`, bold: true },
           { text: ' of ' },
           { text: state.metalRevealed
               ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
               : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
             bold: true },
-          { text: '. Now let\'s just see the reaction going.' },
+          { text: '. Now, let\'s watch the reaction going.' },
         ],
         [{ text: `Watch how ${state.selectedReaction?.product.formula ?? 'the product'} is produced.`, bold: true }],
       ];
+    }
 
     // Post-reaction1 (iOS step 8)
     case 'endReaction1':
       return [
-        [{ text: 'The reaction is complete! Why don\'t you check out the macroscopic beaker to see the precipitate you produced!' }],
         [
+          { text: 'The reaction is complete! Why don\'t you check out the macroscopic beaker to see the precipitate you produced! ' },
           { text: 'Tap the toggle.', bold: true },
-          { text: ' You can also tap back or the run again button to see the reaction again.' },
         ],
+        [{ text: 'You can also tap back or the run again button to see the reaction again.' }],
       ];
 
     case 'weighProduct':
@@ -204,21 +210,23 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
       ];
 
     // Post-weighing explanation (iOS step 10)
-    case 'postWeighing':
+    case 'postWeighing': {
+      const postWeighGrams = state.productMassProduced;
+      const gramName = postWeighGrams === 1 ? 'gram' : 'grams';
+      const unknownGrams2 = state.unknownReactantMassAdded;
+      const unknownGramName2 = unknownGrams2 === 1 ? 'gram' : 'grams';
       return [[
-        { text: `${state.productMassProduced.toFixed(2)} grams of ` },
+        { text: `${postWeighGrams.toFixed(2)} ${gramName} of `, bold: true },
         { text: state.selectedReaction?.product.formula ?? '', bold: true },
-        { text: ` was produced. By dividing this by its Molar Mass, we know that it's ` },
-        { text: `${state.productMolesProduced.toFixed(4)} mol`, bold: true },
-        { text: `, which means that the ` },
-        { text: `${state.unknownReactantMassAdded.toFixed(2)} grams of `, bold: true },
+        { text: ` was produced. By dividing this by its molar mass, we know that it is ${state.productMolesProduced.toFixed(2)} mol, which means that the ${unknownGrams2.toFixed(2)} ${unknownGramName2} of ` },
         { text: state.metalRevealed
             ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
             : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
           bold: true },
         { text: ` we added are ` },
-        { text: `${state.productMolesProduced.toFixed(4)} mol. But what does this mean?`, bold: true },
+        { text: `${state.unknownReactantMoles.toFixed(2)} mol. But what does this mean?`, bold: true },
       ]];
+    }
 
     case 'revealMetal': {
       const unknownMolarMass = state.unknownReactantMolarMass;
@@ -226,22 +234,31 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
         ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
         : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M');
       const revealedFormula = replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal);
+      const revealGrams = state.unknownReactantMassAdded;
+      const revealGramName = revealGrams === 1 ? 'gram' : 'grams';
       return [[
-        { text: `Well, if there are ${state.unknownReactantMassAdded.toFixed(2)} grams in ${state.productMolesProduced.toFixed(4)} moles of ${unknownFormula}, then how many are in 1 mol? There are ${unknownMolarMass} grams of ${unknownFormula}, in 1 mol. That's right, ${unknownMolarMass} g/mol is the Molar Mass of it, and ` },
-        { text: `${revealedFormula}`, bold: true },
-        { text: ` Molar Mass matches perfectly! So ` },
+        { text: `Well, if there are ${revealGrams.toFixed(2)} ${revealGramName} in ${state.unknownReactantMoles.toFixed(2)} moles of `, bold: true },
+        { text: unknownFormula, bold: true },
+        { text: `, then how many are in 1 mol? There are ${unknownMolarMass} grams of ` },
+        { text: unknownFormula, bold: true },
+        { text: ` in 1 mol. That's right, ${unknownMolarMass} g/mol is the molar mass of it, and the molar mass of ` },
+        { text: revealedFormula, bold: true },
+        { text: ` matches it perfectly! So, ` },
         { text: `M = ${state.currentMetal}`, bold: true, color: 'rgb(220, 84, 59)' },
+        { text: '.' },
       ]];
     }
     case 'addExtraUnknown': {
       const revealedFormula2 = replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal);
       return [
         [
-          { text: 'We already discovered the mystery. At this point the ' },
+          { text: 'We already discovered the mystery. At this point, ' },
           { text: revealedFormula2, bold: true },
-          { text: ' is the Limiting Reagent, so just keep shaking ' },
+          { text: ' is the limiting reagent, so just keep shaking ' },
           { text: revealedFormula2, bold: true },
-          { text: ` to neutralize the ${state.selectedReaction?.knownReactant.formula ?? ''} in its entirety.` },
+          { text: ' to neutralize the ' },
+          { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
+          { text: ' in its entirety.' },
         ],
         [{ text: 'Keep shaking to see it react.', bold: true }],
       ];
@@ -255,19 +272,27 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
           { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
           { text: ' that was left in the beaker.' },
         ],
-        [{ text: 'Change between both Microscopic and Macroscopic views.', bold: true }],
+        [{ text: 'Change between both microscopic and macroscopic views.', bold: true }],
       ];
 
     // Post-reaction2 (iOS step 14)
     case 'endReaction2':
-      return [[
-        { text: 'Done! All there\'s not more reactant left. In a real laboratory, you would be able to extract the precipitate of ' },
-        { text: state.selectedReaction?.product.formula ?? '', bold: true },
-        { text: ' with a filter and weight it to know the mass, so this could be applied to real life.' },
-      ]];
+      return [
+        [{ text: 'Done! There\'s no more reactant left.' }],
+        [
+          { text: 'In a real laboratory, you would be able to extract the precipitate of ' },
+          { text: state.selectedReaction?.product.formula ?? '', bold: true },
+          { text: ' with a filter and weigh it to know the mass, so this could be applied in real life.' },
+        ],
+      ];
 
     case 'complete':
+      if (state.reactionRun === 1) {
+        return [[{ text: 'Great job! Press Next to repeat the experiment with the other reaction.' }]];
+      }
       return [[{ text: 'Experiment complete. You identified the unknown metal using stoichiometry. Well done!' }]];
+    case 'prepareSecondReaction':
+      return [[{ text: 'Now, let\'s repeat the experiment with the other reaction!' }]];
     default:
       return [[{ text: '' }]];
   }
@@ -365,6 +390,13 @@ export default function PrecipitationScreen() {
   const hasReaction = state.selectedReaction !== null;
   const segments = buildReactionSegments(state);
   const guideStatement = getGuideStatement(state, exploreMode);
+
+  // iOS: unknownReactant name uses showMetal=false, showCoeff=false for equation subscripts
+  const unknownFormulaDisplay = hasReaction
+    ? (state.metalRevealed
+        ? replaceMetalInFormula(state.selectedReaction!.unknownReactant.formulaTemplate, state.currentMetal)
+        : replaceMetalInFormula(state.selectedReaction!.unknownReactant.formulaTemplate, Metal.Sodium).replace(/Na|Li|K/g, 'M'))
+    : '';
 
   // Measure bottle→beaker fall distance for pour animation
   const containersRowRef = useRef<HTMLDivElement>(null);
@@ -737,7 +769,7 @@ export default function PrecipitationScreen() {
                   <div className={styles.equationLine}>
                     <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
                       <span className={styles.equationValue}>
-                        {state.knownReactantMoles.toFixed(4)}
+                        {state.knownReactantMoles.toFixed(2)}
                       </span>
                     </span>
                   </div>
@@ -761,7 +793,7 @@ export default function PrecipitationScreen() {
                     <div className={styles.equationLine}>
                       <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
                         <span className={styles.equationValue}>
-                          {state.productMolesProduced.toFixed(4)}
+                          {state.productMolesProduced.toFixed(2)}
                         </span>
                       </span>
                       {' = '}
@@ -775,25 +807,31 @@ export default function PrecipitationScreen() {
                     </div>
                   </div>
 
-                  {/* Unknown reactant moles */}
+                  {/* Unknown reactant moles: iOS n_product = coeff × n_unknown(react) */}
                   <div className={styles.equationGroup} style={highlightStyle(state.highlights, 'unknownReactantMoles')}>
                     <div className={styles.equationLine}>
                       <span style={{ fontStyle: 'italic' }}>n</span>
                       <sub>{state.selectedReaction!.product.formula}</sub>
                       {' = '}
+                      {state.selectedReaction!.unknownReactant.coefficient > 1 && (
+                        <>{state.selectedReaction!.unknownReactant.coefficient} &times; </>
+                      )}
                       <span style={{ fontStyle: 'italic' }}>n</span>
-                      <sub>unknown<small>(react)</small></sub>
+                      <sub>{unknownFormulaDisplay}<small>(react)</small></sub>
                     </div>
                     <div className={styles.equationLine}>
                       <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
                         <span className={styles.equationValue}>
-                          {state.productMolesProduced.toFixed(4)}
+                          {state.productMolesProduced.toFixed(2)}
                         </span>
                       </span>
                       {' = '}
+                      {state.selectedReaction!.unknownReactant.coefficient > 1 && (
+                        <>{state.selectedReaction!.unknownReactant.coefficient} &times; </>
+                      )}
                       <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
                         <span className={styles.equationValue}>
-                          {state.unknownReactantMoles.toFixed(4)}
+                          {state.unknownReactantMoles.toFixed(2)}
                         </span>
                       </span>
                     </div>
@@ -802,12 +840,12 @@ export default function PrecipitationScreen() {
                   {/* Unknown reactant molar mass: MM = m / n */}
                   <div className={styles.equationGroup} style={highlightStyle(state.highlights, 'unknownReactantMolarMass')}>
                     <div className={styles.equationLine}>
-                      MM<sub>unknown</sub>
+                      MM<sub>{unknownFormulaDisplay}</sub>
                       {' = '}
                       <span className={styles.equationFraction}>
-                        <span><span style={{ fontStyle: 'italic' }}>m</span><sub>unknown</sub></span>
+                        <span><span style={{ fontStyle: 'italic' }}>m</span><sub>{unknownFormulaDisplay}</sub></span>
                         <span className={styles.fractionLine} />
-                        <span><span style={{ fontStyle: 'italic' }}>n</span><sub>unknown<small>(react)</small></sub></span>
+                        <span><span style={{ fontStyle: 'italic' }}>n</span><sub>{unknownFormulaDisplay}<small>(react)</small></sub></span>
                       </span>
                     </div>
                     <div className={styles.equationLine}>
@@ -823,7 +861,7 @@ export default function PrecipitationScreen() {
                         </span>
                         <span className={styles.fractionLine} />
                         <span className={styles.equationValue}>
-                          {state.unknownReactantMoles.toFixed(4)}
+                          {state.unknownReactantMoles.toFixed(2)}
                         </span>
                       </span>
                     </div>
@@ -845,7 +883,18 @@ export default function PrecipitationScreen() {
         </div>
       ) : (
         <div className={styles.placeholder}>
-          Select a precipitation reaction to begin the simulation.
+          <div className={styles.placeholderContent}>
+            <div className={styles.placeholderText}>
+              Select a precipitation reaction to begin the simulation.
+            </div>
+            <BeakyBox
+              statement={guideStatement}
+              onNext={state.next}
+              onBack={state.back}
+              canGoNext={false}
+              showBack={false}
+            />
+          </div>
         </div>
       )}
     </div>
