@@ -26,6 +26,8 @@ export function FillableBeaker({
   children,
   ...beakerProps
 }: FillableBeakerProps) {
+  const resolvedWaterLevel = Math.max(minWaterLevel, Math.min(maxWaterLevel, waterLevel));
+
   const handleSliderChange = (e: ChangeEvent<HTMLInputElement>) => {
     onWaterLevelChange(parseFloat(e.target.value));
   };
@@ -38,14 +40,14 @@ export function FillableBeaker({
           min={minWaterLevel}
           max={maxWaterLevel}
           step={0.01}
-          value={waterLevel}
+          value={resolvedWaterLevel}
           onChange={handleSliderChange}
           disabled={disabled}
           className={styles.verticalSlider}
           aria-label="Water level"
         />
       </div>
-      <Beaker {...beakerProps} liquidLevel={waterLevel}>
+      <Beaker {...beakerProps} liquidLevel={resolvedWaterLevel}>
         {children}
       </Beaker>
     </div>

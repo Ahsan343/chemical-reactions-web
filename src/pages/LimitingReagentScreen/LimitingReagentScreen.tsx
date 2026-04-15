@@ -14,6 +14,7 @@ import HighlightOverlay from '../../components/shared/HighlightOverlay/Highlight
 import EquationDisplay from '../../components/shared/EquationDisplay/EquationDisplay';
 import type { EquationSegment } from '../../components/shared/EquationDisplay/EquationDisplay';
 import LimitingEquationView, { type LimitingEquationHighlight } from '../../components/limiting-reagent/LimitingEquationView/LimitingEquationView';
+import { MIN_WATER_LEVEL } from './hooks/useLimitingReagentState';
 import ProgressChart from '../../components/limiting-reagent/ProgressChart/ProgressChart';
 
 import styles from './LimitingReagentScreen.module.scss';
@@ -534,6 +535,7 @@ export default function LimitingReagentScreen() {
               <FillableBeaker
                 waterLevel={state.waterLevel}
                 onWaterLevelChange={state.setWaterLevel}
+                minWaterLevel={MIN_WATER_LEVEL}
                 disabled={exploreMode ? !hasReaction || state.isReacting : state.inputPhase !== 'setWaterLevel'}
                 liquidColor="rgb(100, 185, 240)"
                 width={200}
