@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { type BalancedReactionDef, type Molecule, ElementType } from '../../../helper/chemistry/types';
 import MoleculeView from '../MoleculeView/MoleculeView';
 import styles from './MoleculeGrid.module.scss';
@@ -56,7 +55,7 @@ interface DraggableMoleculeProps {
 }
 
 function DraggableMolecule({ gridMolecule, isTutorialTarget, compact, dragEnabled }: DraggableMoleculeProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: gridMolecule.dragId,
     data: {
       molecule: gridMolecule.molecule,
@@ -65,9 +64,11 @@ function DraggableMolecule({ gridMolecule, isTutorialTarget, compact, dragEnable
     disabled: !dragEnabled,
   });
 
+  // NOTE: intentionally NOT applying `transform` to the source element. The
+  // DragOverlay renders the moving visual. If we also translated the source,
+  // the user would see two molecules moving at once (duplicate). The source
+  // stays fully visible in place — iOS "infinite palette" pattern.
   const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    // iOS: source molecule stays fully visible (infinite palette — it doesn't leave the grid)
     opacity: 1,
     cursor: dragEnabled ? (isDragging ? 'grabbing' : 'grab') : 'default',
     zIndex: isDragging ? 10 : 1,

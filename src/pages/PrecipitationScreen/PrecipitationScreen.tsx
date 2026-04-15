@@ -1,7 +1,12 @@
 import { useCallback, useRef, useState, useLayoutEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 
-import { usePrecipitationState, type HighlightElement } from './hooks/usePrecipitationState';
+import {
+  usePrecipitationState,
+  type HighlightElement,
+  MIN_WATER_LEVEL,
+  MAX_WATER_LEVEL,
+} from './hooks/usePrecipitationState';
 
 import { replaceMetalInFormula } from '../../helper/chemistry/molarMass';
 import { Metal } from '../../helper/chemistry/types';
@@ -20,6 +25,7 @@ import PrecipitateShape from '../../components/precipitation/PrecipitateShape/Pr
 import DigitalScales from '../../components/precipitation/DigitalScales/DigitalScales';
 import BeakerToggle from '../../components/precipitation/BeakerToggle/BeakerToggle';
 import MovingHand from '../../components/shared/MovingHand/MovingHand';
+import { useCanvasScale } from '../../layout/ResponsiveLayout';
 
 import styles from './PrecipitationScreen.module.scss';
 
@@ -304,10 +310,25 @@ export default function PrecipitationScreen() {
   const exploreMode = searchParams.get('mode') === 'explore';
   const state = usePrecipitationState(exploreMode);
 
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
-  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  // Captures the pointer position AND the precipitate's left/top (in px
+  // relative to the beaker/scales row) at drag start, so we can update
+  // precipitatePos directly as the user drags. Updating left/top (rather
+  // than layering a transform offset that must later be cleared) means the
+  // CSS transition animates a single smooth glide from the release point to
+  // the scales — no "snap back to beaker then slide to scales" two-step.
+  const dragStartRef = useRef<{
+    pointerX: number;
+    pointerY: number;
+    originLeft: number;
+    originTop: number;
+  } | null>(null);
   const precipitateRef = useRef<HTMLDivElement>(null);
   const scalesRef = useRef<HTMLDivElement>(null);
+
+  // Divide viewport pointer deltas by the canvas scale so drag tracks the
+  // cursor 1:1 on scaled / mobile screens. No-op on desktop (scale === 1).
+  const canvasScale = useCanvasScale();
 
   // iOS: dropdown shows the full chemical equation with M placeholder
   // e.g. "M₂CO₃(aq) + CaCl₂(aq) → CaCO₃(s) + 2MCl(aq)"
@@ -338,18 +359,43 @@ export default function PrecipitationScreen() {
       if (state.precipitatePosition !== 'beaker') return;
       e.preventDefault();
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      dragStartRef.current = { x: e.clientX, y: e.clientY };
-      setDragOffset({ x: 0, y: 0 });
+      // Capture the precipitate's current position (relative to
+      // beakerScalesRow) directly from the DOM so we don't need precipitatePos
+      // as a callback dependency (avoids use-before-declaration).
+      const rowEl = beakerScalesRowRef.current;
+      const precipEl = precipitateRef.current;
+      let originLeft = 0;
+      let originTop = 0;
+      if (rowEl && precipEl) {
+        const rowRect = rowEl.getBoundingClientRect();
+        const pRect = precipEl.getBoundingClientRect();
+        const s = canvasScale > 0 ? canvasScale : 1;
+        // Convert viewport deltas back to logical pixels (see notes in the
+        // position-measuring useLayoutEffect above).
+        originLeft = (pRect.left + pRect.width / 2 - rowRect.left) / s;
+        originTop = (pRect.top + pRect.height / 2 - rowRect.top) / s;
+      }
+      dragStartRef.current = {
+        pointerX: e.clientX,
+        pointerY: e.clientY,
+        originLeft,
+        originTop,
+      };
+      setIsDragging(true);
     },
-    [state.phase, state.precipitatePosition, exploreMode],
+    [state.phase, state.precipitatePosition, exploreMode, canvasScale],
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!dragStartRef.current) return;
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
-      setDragOffset({ x: dx, y: dy });
+      const scaleDivisor = canvasScale > 0 ? canvasScale : 1;
+      const dx = (e.clientX - dragStartRef.current.pointerX) / scaleDivisor;
+      const dy = (e.clientY - dragStartRef.current.pointerY) / scaleDivisor;
+      setPrecipitatePos({
+        left: `${dragStartRef.current.originLeft + dx}px`,
+        top: `${dragStartRef.current.originTop + dy}px`,
+      });
 
       if (scalesRef.current) {
         const scalesRect = scalesRef.current.getBoundingClientRect();
@@ -361,14 +407,14 @@ export default function PrecipitationScreen() {
         state.setDropTarget(isOver);
       }
     },
-    [state],
+    [state, canvasScale],
   );
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (!dragStartRef.current) return;
       dragStartRef.current = null;
-      setDragOffset(null);
+      setIsDragging(false);
 
       if (scalesRef.current) {
         const scalesRect = scalesRef.current.getBoundingClientRect();
@@ -379,12 +425,37 @@ export default function PrecipitationScreen() {
           e.clientY <= scalesRect.bottom;
 
         if (isOver) {
+          // Commit the drop → the position useLayoutEffect will remeasure to
+          // the scales centre, and because the draggable class is gone the
+          // CSS transition on left/top produces ONE smooth glide.
           state.dragPrecipitate('scales');
+        } else {
+          // Not over scales: snap back to beaker via the same transition.
+          // Force the effect to re-run by triggering a measure through
+          // setting position explicitly. The effect re-runs anyway because
+          // precipitatePosition hasn't changed — so manually reset.
+          const rowEl = beakerScalesRowRef.current;
+          const beakerEl = beakerWrapperRef.current;
+          if (rowEl && beakerEl) {
+            const rowRect = rowEl.getBoundingClientRect();
+            const beakerRect = beakerEl.getBoundingClientRect();
+            const waterSurface = beakerEl.querySelector('[data-water-surface]');
+            const s = canvasScale > 0 ? canvasScale : 1;
+            const beakerCenterX =
+              (beakerRect.left + beakerRect.width / 2 - rowRect.left) / s;
+            const waterCenterY = waterSurface
+              ? (((waterSurface as HTMLElement).getBoundingClientRect().top + beakerRect.bottom) / 2 - rowRect.top) / s
+              : (beakerRect.top + beakerRect.height * 0.7 - rowRect.top) / s;
+            setPrecipitatePos({
+              left: `${beakerCenterX}px`,
+              top: `${waterCenterY}px`,
+            });
+          }
         }
       }
       state.setDropTarget(false);
     },
-    [state],
+    [state, canvasScale],
   );
 
   const hasReaction = state.selectedReaction !== null;
@@ -443,21 +514,35 @@ export default function PrecipitationScreen() {
       const beakerEl = beakerWrapperRef.current;
       const scalesEl = scalesRef.current;
       if (!rowEl) return;
+      // getBoundingClientRect returns viewport pixels. When the page is
+      // wrapped in ResponsiveLayout's `transform: scale()` container,
+      // everything inside is scaled — so viewport pixels = logicalPixels *
+      // scale. The precipitate element lives inside that same scaled
+      // container and its CSS left/top are interpreted in the parent's
+      // *logical* coordinate system. So divide viewport deltas by the scale
+      // to get back to logical pixels. On desktop (scale = 1) this is a
+      // no-op. Without it, at e.g. scale 0.5 the precipitate lands at half
+      // the intended position — above the water, offset from the cursor,
+      // etc. (matches the bug reported for small screens).
+      const s = canvasScale > 0 ? canvasScale : 1;
       const rowRect = rowEl.getBoundingClientRect();
 
       if (state.precipitatePosition === 'beaker' && beakerEl) {
         // iOS: precipitate sits at center of water column
         const waterSurface = beakerEl.querySelector('[data-water-surface]');
         const beakerRect = beakerEl.getBoundingClientRect();
-        const beakerCenterX = beakerRect.left + beakerRect.width / 2 - rowRect.left;
+        const beakerCenterX =
+          (beakerRect.left + beakerRect.width / 2 - rowRect.left) / s;
 
         let waterCenterY: number;
         if (waterSurface) {
           const wsRect = waterSurface.getBoundingClientRect();
           // Center between water surface and beaker bottom
-          waterCenterY = (wsRect.top + beakerRect.bottom) / 2 - rowRect.top;
+          waterCenterY =
+            ((wsRect.top + beakerRect.bottom) / 2 - rowRect.top) / s;
         } else {
-          waterCenterY = beakerRect.top + beakerRect.height * 0.7 - rowRect.top;
+          waterCenterY =
+            (beakerRect.top + beakerRect.height * 0.7 - rowRect.top) / s;
         }
 
         setPrecipitatePos({
@@ -467,8 +552,8 @@ export default function PrecipitationScreen() {
       } else if (state.precipitatePosition === 'scales' && scalesEl) {
         const scalesRect = scalesEl.getBoundingClientRect();
         setPrecipitatePos({
-          left: `${scalesRect.left + scalesRect.width / 2 - rowRect.left}px`,
-          top: `${scalesRect.top + scalesRect.height * 0.3 - rowRect.top}px`,
+          left: `${(scalesRect.left + scalesRect.width / 2 - rowRect.left) / s}px`,
+          top: `${(scalesRect.top + scalesRect.height * 0.3 - rowRect.top) / s}px`,
         });
       }
     };
@@ -478,7 +563,7 @@ export default function PrecipitationScreen() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', measure);
     };
-  }, [state.precipitatePosition, state.waterLevel, hasReaction]);
+  }, [state.precipitatePosition, state.waterLevel, hasReaction, canvasScale]);
 
   const isReactionPhase = state.phase === 'reaction1' || state.phase === 'reaction2' || state.phase === 'weighProduct' || state.phase === 'revealMetal' || state.phase === 'complete';
   const knownContainerActive = exploreMode ? (hasReaction && !isReactionPhase) : state.phase === 'addKnown';
@@ -566,6 +651,8 @@ export default function PrecipitationScreen() {
                 <FillableBeaker
                   waterLevel={state.waterLevel}
                   onWaterLevelChange={state.setWaterLevel}
+                  minWaterLevel={MIN_WATER_LEVEL}
+                  maxWaterLevel={MAX_WATER_LEVEL}
                   disabled={exploreMode ? (!hasReaction || isReactionPhase) : state.phase !== 'setWaterLevel'}
                   width={160}
                 >
@@ -608,9 +695,7 @@ export default function PrecipitationScreen() {
                   }`}
                   style={{
                     ...precipitatePos,
-                    transform: dragOffset
-                      ? `translate(calc(-50% + ${dragOffset.x}px), calc(-50% + ${dragOffset.y}px))`
-                      : 'translate(-50%, -50%)',
+                    transform: 'translate(-50%, -50%)',
                     zIndex: 10,
                   }}
                   onPointerDown={
@@ -632,7 +717,17 @@ export default function PrecipitationScreen() {
                   <PrecipitateShape
                     progress={state.reactionProgress}
                     color={state.selectedReaction!.product.color}
-                    size={60}
+                    size={(() => {
+                      // Scale the precipitate polygon with water level so it
+                      // always stays inside the liquid region. At min water
+                      // (small puddle) cap at 36px; at max water use 60px.
+                      const w = Math.max(
+                        MIN_WATER_LEVEL,
+                        Math.min(MAX_WATER_LEVEL, state.waterLevel),
+                      );
+                      const t = (w - MIN_WATER_LEVEL) / (MAX_WATER_LEVEL - MIN_WATER_LEVEL);
+                      return Math.round(36 + t * 24);
+                    })()}
                   />
                 </div>
               )}
@@ -646,7 +741,7 @@ export default function PrecipitationScreen() {
                 state.phase === 'weighProduct' &&
                 state.precipitatePosition === 'beaker' &&
                 state.beakerView === 'macroscopic' &&
-                !dragOffset
+                !isDragging
               }
               showDelay={2}
             />

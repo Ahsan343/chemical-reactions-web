@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './MovingHand.module.scss';
 
 interface MovingHandProps {
@@ -74,7 +75,11 @@ export default function MovingHand({
   const dx = positions.endX - positions.startX;
   const dy = positions.endY - positions.startY;
 
-  return (
+  // Portal to document.body so `position: fixed` and the measured viewport
+  // coordinates aren't re-scaled by any transformed ancestor (e.g. the
+  // ResponsiveLayout container). Without this, on mobile / scaled screens
+  // the hand animates between the wrong on-screen positions.
+  return createPortal(
     <div
       className={styles.movingHand}
       style={{
@@ -90,6 +95,7 @@ export default function MovingHand({
         className={styles.handImage}
         draggable={false}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }

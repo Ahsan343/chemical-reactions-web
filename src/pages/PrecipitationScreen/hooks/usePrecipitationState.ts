@@ -109,11 +109,47 @@ interface MoleculeDot {
 const STORAGE_KEY = 'precipitationState';
 const MIN_MOLECULES = 5;
 const MAX_MOLECULES = 40;
+
+// iOS parity (ChemicalReactionsSettings.swift) maps rows 6→14 to volumes
+// 0.1→0.7 L. In the web canvas the beaker is short enough that 0.1 L
+// renders as a barely-visible puddle, so we raise the floor to 0.3 L which
+// gives a visible working volume while still well below the 0.7 L max.
+// The slider is bounded to this range and the count-adjustment logic below
+// scales molecule capacity linearly with waterLevel.
+export const MIN_WATER_LEVEL = 0.3;
+export const MAX_WATER_LEVEL = 0.7;
 const INITIAL_WATER_LEVEL = 0.5;
+
 // Grid dimensions matching iOS MoleculeGridSettings (rows x cols = 10 x 19 = 190)
 const GRID_ROWS = 10;
 const GRID_COLS = 19;
 const GRID_SIZE = GRID_ROWS * GRID_COLS;
+
+/**
+ * Max molecules per reactant at a given water level — mirrors iOS
+ * ReactantInputLimits. iOS maps water rows 6→10 (over volumes 0.1L→0.7L)
+ * to grid sizes 114→190 (rows × 19 cols), and the per-reactant cap is
+ * roughly a quarter of the grid (leaving room for the other reactant plus
+ * stoichiometric headroom). At min water the cap is still generous (~30
+ * molecules) — nowhere near the 5-molecule reaction threshold. We still
+ * ceiling at MAX_MOLECULES so the total never exceeds what the web grid
+ * renders cleanly.
+ */
+const IOS_ROWS_AT_MIN_VOLUME = 6;
+const IOS_ROWS_AT_MAX_VOLUME = 10;
+const IOS_VOLUME_MIN = 0.1; // iOS rows=6
+const IOS_VOLUME_MAX = 0.7; // iOS rows=10
+const IOS_GRID_COLS = 19;
+const IOS_CAP_FRACTION = 0.25; // ~one quarter of grid per reactant
+
+function maxMoleculesForWater(waterLevel: number): number {
+  const w = Math.max(IOS_VOLUME_MIN, Math.min(IOS_VOLUME_MAX, waterLevel));
+  const t = (w - IOS_VOLUME_MIN) / (IOS_VOLUME_MAX - IOS_VOLUME_MIN);
+  const rows = IOS_ROWS_AT_MIN_VOLUME + t * (IOS_ROWS_AT_MAX_VOLUME - IOS_ROWS_AT_MIN_VOLUME);
+  const gridSize = rows * IOS_GRID_COLS;
+  const cap = Math.floor(gridSize * IOS_CAP_FRACTION);
+  return Math.max(MIN_MOLECULES, Math.min(MAX_MOLECULES, cap));
+}
 
 /**
  * iOS-style grid-based molecule placement (19 cols × 10 rows).
@@ -127,30 +163,81 @@ function generateMoleculePositions(
   existingDots: MoleculeDot[] = [],
 ): MoleculeDot[] {
   const dots: MoleculeDot[] = [];
+
+  // The water region occupies [surfaceFrac, 1] within the overlay, so molecule
+  // y-positions need to be remapped into that sub-range. We use a variable
+  // number of rows matching iOS (rows=6 at min volume → rows=10 at max) so
+  // molecules fill the water region proportionally without leaving an empty
+  // gap at the surface.
+  //
+  // surfaceFrac must match Beaker.tsx's childrenOverlay geometry EXACTLY,
+  // not `1 - waterLevel`. The overlay sits at innerTop+4 with height
+  // resolvedHeight - innerTop - cornerRadius*0.5 - 4 (not the full beaker),
+  // so `1 - waterLevel` overshoots the true surface by ~3%. For beaker
+  // width=160 (used in precipitation) the exact surface fraction is computed
+  // below. This is resolution-independent: the parent ResponsiveLayout scales
+  // the entire canvas uniformly, so the fractional position maps to the
+  // correct pixel on both small and large screens.
+  const BEAKER_WIDTH = 160;
+  const BEAKER_HEIGHT = Math.round(BEAKER_WIDTH * 1.1); // 176
+  const BEAKER_INNER_TOP = BEAKER_WIDTH * 0.03 * 2 + 2; // 11.6
+  const BEAKER_CORNER_RADIUS = BEAKER_WIDTH * 0.1; // 16
+  const BEAKER_LIQUID_FILLABLE = BEAKER_HEIGHT - BEAKER_INNER_TOP;
+  const OVERLAY_TOP = BEAKER_INNER_TOP + 4;
+  const OVERLAY_HEIGHT = BEAKER_HEIGHT - BEAKER_INNER_TOP - BEAKER_CORNER_RADIUS * 0.5 - 4;
+
+  const wl = Math.min(1, Math.max(0, waterLevel));
+  const liquidTop = BEAKER_INNER_TOP + BEAKER_LIQUID_FILLABLE * (1 - wl);
+  const surfaceFrac = Math.max(0, Math.min(1, (liquidTop - OVERLAY_TOP) / OVERLAY_HEIGHT));
+  const t = (Math.max(IOS_VOLUME_MIN, Math.min(IOS_VOLUME_MAX, wl)) - IOS_VOLUME_MIN)
+    / (IOS_VOLUME_MAX - IOS_VOLUME_MIN);
+  const rowsInWater = Math.max(
+    1,
+    Math.round(IOS_ROWS_AT_MIN_VOLUME + t * (IOS_ROWS_AT_MAX_VOLUME - IOS_ROWS_AT_MIN_VOLUME)),
+  );
+
+  // Dot radius as a fraction of overlay height (dotSize=10 / overlayHeight)
+  // so the topmost dots sit with their TOP edge right at the water surface
+  // (not half-submerged, not clipped) and the bottom row clears the beaker
+  // floor curve. Using the exact overlay height keeps this pixel-accurate at
+  // all screen sizes.
+  const DOT_RADIUS_FRAC = 5 / OVERLAY_HEIGHT;
+  const usableTop = surfaceFrac + DOT_RADIUS_FRAC;
+  const usableBottom = 1 - DOT_RADIUS_FRAC * 1.5;
+  const usableHeight = Math.max(0.0001, usableBottom - usableTop);
+
   const occupied = new Set(
     existingDots.map((p) => `${Math.round(p.x * GRID_COLS)},${Math.round(p.y * GRID_ROWS)}`),
   );
 
-  // Water surface row: waterLevel 0→1 means 0%→100% filled from bottom.
-  // Row 0 = top, GRID_ROWS-1 = bottom.
-  const surfaceRow = Math.floor(GRID_ROWS * (1 - Math.min(1, Math.max(0, waterLevel))));
-  const minRow = Math.min(surfaceRow + 1, GRID_ROWS - 1);
-  const availableRows = Math.max(1, GRID_ROWS - minRow);
-
+  // Stratified row assignment: guarantees the top row is populated even when
+  // the molecule count is low (e.g. 10 dots across 8 rows). Without this,
+  // random row picks often leave the surface row empty and dots appear to
+  // float below the water surface.
+  const existingRowCount = existingDots.length;
   for (let i = 0; i < count; i++) {
+    const slot = existingRowCount + i; // continue the stripe if adding to existing layout
+    const assignedRow = slot % rowsInWater;
     let attempts = 0;
-    let col: number;
-    let row: number;
+    let col: number = 0;
+    let row: number = assignedRow;
+    let keyRow: number = 0;
     do {
       col = Math.floor(Math.random() * GRID_COLS);
-      row = minRow + Math.floor(Math.random() * availableRows);
+      // Nudge row a bit for visual variety if the stratified slot is full
+      row = attempts === 0 ? assignedRow : Math.floor(Math.random() * rowsInWater);
+      const rowFrac = rowsInWater > 1 ? row / (rowsInWater - 1) : 0;
+      const y = usableTop + rowFrac * usableHeight;
+      keyRow = Math.round(y * GRID_ROWS);
       attempts++;
-    } while (occupied.has(`${col},${row}`) && attempts < 100);
-    occupied.add(`${col},${row}`);
+      if (!occupied.has(`${col},${keyRow}`)) break;
+    } while (attempts < 100);
+    occupied.add(`${col},${keyRow}`);
+    const rowFrac = rowsInWater > 1 ? row / (rowsInWater - 1) : 0;
     dots.push({
       color,
       x: (col + 0.5) / GRID_COLS,
-      y: (row + 0.5) / GRID_ROWS,
+      y: usableTop + rowFrac * usableHeight,
     });
   }
   return dots;
@@ -354,12 +441,26 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     tagAction('toggleBeakerView', 'precipitation', { view });
   }, []);
 
+  // Clamp water level to the iOS-valid range and keep molecule counts in
+  // sync — lowering water must reduce reactant molecules so they still fit
+  // in the available liquid region.
+  const setWaterLevelClamped = useCallback((level: number) => {
+    const clamped = Math.max(MIN_WATER_LEVEL, Math.min(MAX_WATER_LEVEL, level));
+    setWaterLevel(clamped);
+    const cap = maxMoleculesForWater(clamped);
+    setKnownMoleculeCount((prev) => Math.min(prev, cap));
+    setUnknownMoleculeCount((prev) => Math.min(prev, cap));
+  }, []);
+
   const addReactant = useCallback((type: 'known' | 'unknown', count: number) => {
+    // Cap scales with water level so you can't cram more molecules into
+    // the beaker than the current liquid volume can hold.
+    const cap = maxMoleculesForWater(waterLevel);
     if (exploreMode) {
-      // In explore mode, allow adding both types freely
+      // In explore mode, allow adding both types freely (within the cap)
       if (type === 'known') {
         setKnownMoleculeCount((prev) => {
-          const next = Math.min(prev + count, MAX_MOLECULES);
+          const next = Math.min(prev + count, cap);
           if (next >= MIN_MOLECULES) {
             setEquationState('showMolarity');
           }
@@ -367,14 +468,14 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         });
         tagAction('addKnownReactant', 'precipitation', { count, explore: true });
       } else if (type === 'unknown') {
-        setUnknownMoleculeCount((prev) => Math.min(prev + count, MAX_MOLECULES));
+        setUnknownMoleculeCount((prev) => Math.min(prev + count, cap));
         tagAction('addUnknownReactant', 'precipitation', { count, explore: true });
       }
       return;
     }
     if (type === 'known' && phase === 'addKnown') {
       setKnownMoleculeCount((prev) => {
-        const next = Math.min(prev + count, MAX_MOLECULES);
+        const next = Math.min(prev + count, cap);
         if (next >= MIN_MOLECULES) {
           setEquationState('showMolarity');
         }
@@ -382,10 +483,10 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       });
       tagAction('addKnownReactant', 'precipitation', { count });
     } else if (type === 'unknown' && (phase === 'addUnknown' || phase === 'addExtraUnknown')) {
-      setUnknownMoleculeCount((prev) => Math.min(prev + count, MAX_MOLECULES));
+      setUnknownMoleculeCount((prev) => Math.min(prev + count, cap));
       tagAction('addUnknownReactant', 'precipitation', { count });
     }
-  }, [phase, exploreMode]);
+  }, [phase, exploreMode, waterLevel]);
 
   const dragPrecipitate = useCallback((position: PrecipitatePosition) => {
     if (!exploreMode && phase !== 'weighProduct') return;
@@ -437,7 +538,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       case 'chooseReaction':
         return false;
       case 'setWaterLevel':
-        return waterLevel > 0.1;
+        return waterLevel >= MIN_WATER_LEVEL;
       case 'addKnown':
         return knownMoleculeCount >= MIN_MOLECULES;
       case 'addUnknown':
@@ -735,7 +836,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
 
     selectReaction,
     toggleBeakerView,
-    setWaterLevel,
+    setWaterLevel: setWaterLevelClamped,
     addReactant,
     dragPrecipitate,
     setDropTarget: setDropTargetState,

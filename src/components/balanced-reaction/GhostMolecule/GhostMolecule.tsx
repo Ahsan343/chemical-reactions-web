@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { type Molecule } from '../../../helper/chemistry/types';
 import MoleculeView from '../MoleculeView/MoleculeView';
 import styles from './GhostMolecule.module.scss';
@@ -87,7 +88,11 @@ export default function GhostMolecule({ molecule, active }: GhostMoleculeProps) 
     ['--end-y' as string]: `${positions.end.top}px`,
   };
 
-  return (
+  // Portal to document.body so that `position: fixed` and the computed
+  // viewport coordinates aren't re-scaled by ResponsiveLayout's transform
+  // ancestor. Without this, on mobile / scaled screens the ghost animates
+  // between the wrong pixel positions (offset from the actual grid & beaker).
+  return createPortal(
     <div className={styles.ghostOverlay} style={style} aria-hidden="true">
       <div className={styles.ghost}>
         <div className={styles.moleculeWrap}>
@@ -102,6 +107,7 @@ export default function GhostMolecule({ molecule, active }: GhostMoleculeProps) 
           draggable={false}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

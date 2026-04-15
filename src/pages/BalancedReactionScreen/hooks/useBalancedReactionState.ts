@@ -91,6 +91,22 @@ export function useBalancedReactionState(exploreMode = false): BalancedReactionS
     forceUpdate((n) => n + 1);
   }, [exploreMode, completedCount]);
 
+  // Shared helper: synchronize phase with the current balance state.
+  // Handles both directions:
+  //   - dragMolecules → balanced (when a change achieves exact-coefficient balance)
+  //   - balanced → dragMolecules (when a change breaks balance)
+  const syncPhaseWithBalance = useCallback(() => {
+    const nowBalanced = balancerRef.current.isBalanced;
+    if (nowBalanced && phase !== 'balanced') {
+      setPhase('balanced');
+      setCompletedCount((prev) => prev + 1);
+      setScreenCompleted('balanced');
+      tagAction('screenCompleted', 'balancedReaction', { reactionId: selectedReaction?.id });
+    } else if (!nowBalanced && phase === 'balanced') {
+      setPhase('dragMolecules');
+    }
+  }, [phase, selectedReaction]);
+
   const addMoleculeToBeaker = useCallback((molecule: Molecule, side: ElementType) => {
     balancerRef.current.add(molecule, side);
     setLastAdjustedMolecule(molecule);
@@ -118,14 +134,8 @@ export function useBalancedReactionState(exploreMode = false): BalancedReactionS
 
     forceUpdate((n) => n + 1);
 
-    // Check if balanced after adding
-    if (balancerRef.current.isBalanced) {
-      setPhase('balanced');
-      setCompletedCount((prev) => prev + 1);
-      setScreenCompleted('balanced');
-      tagAction('screenCompleted', 'balancedReaction', { reactionId: selectedReaction?.id });
-    }
-  }, [showTutorial, selectedReaction]);
+    syncPhaseWithBalance();
+  }, [showTutorial, syncPhaseWithBalance]);
 
   const removeMoleculeFromBeaker = useCallback((molecule: Molecule, side: ElementType) => {
     balancerRef.current.remove(molecule, side);
@@ -150,11 +160,8 @@ export function useBalancedReactionState(exploreMode = false): BalancedReactionS
 
     forceUpdate((n) => n + 1);
 
-    // If was balanced but now unbalanced
-    if (!balancerRef.current.isBalanced && phase === 'balanced') {
-      setPhase('dragMolecules');
-    }
-  }, [phase]);
+    syncPhaseWithBalance();
+  }, [syncPhaseWithBalance]);
 
   const reset = useCallback(() => {
     tagAction('reset', 'balancedReaction', { reactionId: selectedReaction?.id });

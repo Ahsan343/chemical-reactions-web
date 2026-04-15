@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { type Molecule, type ElementType } from '../../../helper/chemistry/types';
 import { Beaker } from '../../shared/Beaker/Beaker';
 import MoleculeView from '../MoleculeView/MoleculeView';
@@ -46,7 +45,7 @@ function BeakerDraggableMolecule({
   isNew: boolean;
   onRemove?: (molecule: Molecule, side: ElementType) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: dragId,
     data: {
       molecule,
@@ -65,8 +64,9 @@ function BeakerDraggableMolecule({
     }
   }, [animate]);
 
+  // Intentionally no transform on the source — DragOverlay handles the moving
+  // visual. Keeping a transform here would show two molecules moving at once.
   const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.3 : 1,
     cursor: onRemove ? (isDragging ? 'grabbing' : 'grab') : 'default',
     zIndex: isDragging ? 10 : 1,

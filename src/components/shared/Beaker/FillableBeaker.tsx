@@ -9,6 +9,10 @@ interface FillableBeakerProps extends Omit<BeakerProps, 'liquidLevel'> {
   onWaterLevelChange: (level: number) => void;
   /** Whether the slider is disabled */
   disabled?: boolean;
+  /** Minimum slider value (iOS parity: 0.1 for precipitation). Defaults to 0. */
+  minWaterLevel?: number;
+  /** Maximum slider value (iOS parity: 0.7 for precipitation). Defaults to 1. */
+  maxWaterLevel?: number;
   /** Content rendered inside the liquid area */
   children?: ReactNode;
 }
@@ -17,6 +21,8 @@ export function FillableBeaker({
   waterLevel,
   onWaterLevelChange,
   disabled = false,
+  minWaterLevel = 0,
+  maxWaterLevel = 1,
   children,
   ...beakerProps
 }: FillableBeakerProps) {
@@ -29,8 +35,8 @@ export function FillableBeaker({
       <div className={styles.sliderTrack}>
         <input
           type="range"
-          min={0}
-          max={1}
+          min={minWaterLevel}
+          max={maxWaterLevel}
           step={0.01}
           value={waterLevel}
           onChange={handleSliderChange}

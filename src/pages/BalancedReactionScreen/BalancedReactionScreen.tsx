@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { DndContext, DragOverlay, type DragEndEvent, type DragOverEvent, type DragStartEvent } from '@dnd-kit/core';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { ElementType, type Molecule } from '../../helper/chemistry/types';
@@ -409,15 +410,21 @@ export default function BalancedReactionScreen() {
           />
         )}
 
-        {/* Drag overlay: shows the molecule being dragged at cursor position */}
-        <DragOverlay dropAnimation={null}>
-          {activeDragMolecule ? (
-            <div className={styles.dragOverlay}>
-              <MoleculeView molecule={activeDragMolecule} atomSize={28} />
-              <span className={styles.dragOverlayLabel}>{activeDragMolecule.formula}</span>
-            </div>
-          ) : null}
-        </DragOverlay>
+        {/* Drag overlay: portaled to document.body so its `position: fixed`
+            resolves against the viewport, not the ResponsiveLayout's scaled
+            container (otherwise the overlay drifts away from the cursor on
+            mobile / small screens where the canvas is scaled down). */}
+        {createPortal(
+          <DragOverlay dropAnimation={null}>
+            {activeDragMolecule ? (
+              <div className={styles.dragOverlay}>
+                <MoleculeView molecule={activeDragMolecule} atomSize={28} />
+                <span className={styles.dragOverlayLabel}>{activeDragMolecule.formula}</span>
+              </div>
+            ) : null}
+          </DragOverlay>,
+          document.body,
+        )}
       </DndContext>
 
       <div className={styles.bottomBar}>

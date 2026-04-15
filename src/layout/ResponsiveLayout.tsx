@@ -1,8 +1,18 @@
-import { useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import styles from './ResponsiveLayout.module.scss';
 
 interface Props {
   children: ReactNode;
+}
+
+/** Exposes the current viewport → canvas scale factor (<= 1).
+ *  Consumers that work in viewport pixel deltas (e.g. @dnd-kit drag overlays)
+ *  need to divide by this scale to stay aligned with the cursor when the
+ *  1420×780 canvas is scaled down on smaller screens. */
+const ScaleContext = createContext<number>(1);
+
+export function useCanvasScale(): number {
+  return useContext(ScaleContext);
 }
 
 export function ResponsiveLayout({ children }: Props) {
@@ -39,18 +49,20 @@ export function ResponsiveLayout({ children }: Props) {
           </div>
         </div>
       )}
-      <div
-        className={styles.scaler}
-        style={{
-          transform: `scale(${scale})`,
-          width: dims.w / scale,
-          height: dims.h / scale,
-        }}
-      >
-        <div className={styles.content}>
-          {children}
+      <ScaleContext.Provider value={scale}>
+        <div
+          className={styles.scaler}
+          style={{
+            transform: `scale(${scale})`,
+            width: dims.w / scale,
+            height: dims.h / scale,
+          }}
+        >
+          <div className={styles.content}>
+            {children}
+          </div>
         </div>
-      </div>
+      </ScaleContext.Provider>
     </div>
   );
 }
