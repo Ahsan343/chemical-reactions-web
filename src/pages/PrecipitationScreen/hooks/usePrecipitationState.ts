@@ -634,7 +634,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       default:
         break;
     }
-  }, [phase, knownMoleculeCount, unknownMoleculeCount, precipitatePosition, exploreMode, currentMetal, selectedReaction, waterLevel, animateReaction, knownMolecules, unknownMolecules]);
+  }, [phase, knownMoleculeCount, unknownMoleculeCount, precipitatePosition, exploreMode, currentMetal, selectedReaction, waterLevel, animateReaction, knownMolecules, unknownMolecules, completedReactionIds, reactionRun]);
 
   const back = useCallback(() => {
     tagAction('back', 'precipitation', { fromPhase: phase });
