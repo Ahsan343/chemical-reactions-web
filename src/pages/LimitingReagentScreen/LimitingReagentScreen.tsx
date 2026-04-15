@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 
 import { useLimitingReagentState } from './hooks/useLimitingReagentState';
@@ -395,7 +395,8 @@ export default function LimitingReagentScreen() {
       case 'setWaterLevel':
         return new Set<HighlightTarget>(['beakerSlider']);
       case 'addLimiting':
-        return new Set<HighlightTarget>(['limitingReactantContainer']);
+        // Beaker must stay visible — user is pouring INTO it
+        return new Set<HighlightTarget>(['limitingReactantContainer', 'beakerSlider']);
       case 'showLimitingMoles':
         return new Set<HighlightTarget>(['limitingReactantMolesToVolume']);
       case 'showNeededExcess':
@@ -404,7 +405,8 @@ export default function LimitingReagentScreen() {
         return new Set<HighlightTarget>(['theoreticalProductMass']);
       case 'addExcess':
       case 'addExtraExcess':
-        return new Set<HighlightTarget>(['excessReactantContainer']);
+        // Beaker must stay visible — user is pouring INTO it
+        return new Set<HighlightTarget>(['excessReactantContainer', 'beakerSlider']);
       case 'showYieldPercentage':
         return new Set<HighlightTarget>(['productYieldPercentage']);
       default:
@@ -423,6 +425,40 @@ export default function LimitingReagentScreen() {
     });
     return s;
   }, [activeHighlights]);
+
+  // Measure bottle→beaker fall distance for pour animation (iOS: 200pt/s linear drop)
+  const containersRef = useRef<HTMLDivElement>(null);
+  const beakerRef = useRef<HTMLDivElement>(null);
+  const [fallDistance, setFallDistance] = useState('120px');
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const cEl = containersRef.current;
+      const bEl = beakerRef.current;
+      if (cEl && bEl) {
+        const cRect = cEl.getBoundingClientRect();
+        // Find the water surface marker inside the beaker area
+        const waterSurface = bEl.querySelector('[data-water-surface]');
+        if (waterSurface) {
+          const wsRect = waterSurface.getBoundingClientRect();
+          const dist = wsRect.top - cRect.bottom;
+          setFallDistance(`${Math.max(40, Math.round(dist))}px`);
+        } else {
+          // Fallback: 40% into beaker
+          const bRect = bEl.getBoundingClientRect();
+          const dist = bRect.top + bRect.height * 0.4 - cRect.bottom;
+          setFallDistance(`${Math.max(40, Math.round(dist))}px`);
+        }
+      }
+    };
+    // Small delay to let CSS transitions settle after waterLevel changes
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+    };
+  }, [hasReaction, state.waterLevel]);
 
   return (
     <div className={styles.screen}>
@@ -468,7 +504,7 @@ export default function LimitingReagentScreen() {
       <div className={styles.centerArea}>
         {/* Left: bottles stacked above beaker */}
         <div className={styles.beakerColumn}>
-          <div className={styles.containersRow}>
+          <div className={styles.containersRow} ref={containersRef}>
             <HighlightOverlay highlighted={isHighlighted('limitingReactantContainer')}>
               <ShakingContainer
                 color={state.selectedReaction?.limitingReactant.color ?? 'rgb(200,60,60)'}
@@ -477,6 +513,7 @@ export default function LimitingReagentScreen() {
                 disabled={!limitingActive}
                 isActive={limitingActive}
                 tooltipText={limitingActive ? 'Click to add molecules' : undefined}
+                fallDistance={fallDistance}
               />
             </HighlightOverlay>
             <HighlightOverlay highlighted={isHighlighted('excessReactantContainer')}>
@@ -487,12 +524,13 @@ export default function LimitingReagentScreen() {
                 disabled={!excessActive}
                 isActive={excessActive}
                 tooltipText={excessActive ? 'Click to add molecules' : undefined}
+                fallDistance={fallDistance}
               />
             </HighlightOverlay>
           </div>
 
           <HighlightOverlay highlighted={isHighlighted('beakerSlider')}>
-            <div className={styles.beakerArea}>
+            <div className={styles.beakerArea} ref={beakerRef}>
               <FillableBeaker
                 waterLevel={state.waterLevel}
                 onWaterLevelChange={state.setWaterLevel}

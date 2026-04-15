@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useLayoutEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 
-import { usePrecipitationState } from './hooks/usePrecipitationState';
+import { usePrecipitationState, type HighlightElement } from './hooks/usePrecipitationState';
 
 import { replaceMetalInFormula } from '../../helper/chemistry/molarMass';
 import { Metal } from '../../helper/chemistry/types';
@@ -14,12 +14,35 @@ import { FillableBeaker } from '../../components/shared/Beaker/FillableBeaker';
 import { BeakerMoleculeGrid } from '../../components/shared/Beaker/BeakerMoleculeGrid';
 import ShakingContainer from '../../components/shared/ShakingContainer/ShakingContainer';
 import BeakyBox from '../../components/shared/BeakyBox/BeakyBox';
+import { type TextLine } from '../../components/shared/guide/useGuideStore';
 import MetalTable from '../../components/precipitation/MetalTable/MetalTable';
 import PrecipitateShape from '../../components/precipitation/PrecipitateShape/PrecipitateShape';
 import DigitalScales from '../../components/precipitation/DigitalScales/DigitalScales';
 import BeakerToggle from '../../components/precipitation/BeakerToggle/BeakerToggle';
+import MovingHand from '../../components/shared/MovingHand/MovingHand';
 
 import styles from './PrecipitationScreen.module.scss';
+
+/**
+ * iOS HighlightedElements.colorMultiply — returns a CSS filter/style to dim
+ * elements that are NOT in the current highlight list.
+ * When highlights is empty, everything is bright (no dimming).
+ */
+function highlightStyle(
+  highlights: HighlightElement[],
+  element: HighlightElement,
+): React.CSSProperties {
+  if (highlights.length === 0) return {};
+  const isActive = highlights.includes(element);
+  return isActive
+    ? { transition: 'opacity 0.3s ease, filter 0.3s ease' }
+    : {
+        opacity: 0.35,
+        filter: 'saturate(0.3)',
+        pointerEvents: 'none' as const,
+        transition: 'opacity 0.3s ease, filter 0.3s ease',
+      };
+}
 
 function buildReactionSegments(
   state: ReturnType<typeof usePrecipitationState>
@@ -29,6 +52,8 @@ function buildReactionSegments(
 
   const emphasize = !metalRevealed;
 
+  const unknownCoeff = selectedReaction.unknownReactant.coefficient > 1
+    ? `${selectedReaction.unknownReactant.coefficient}` : '';
   const unknownFormula = replaceMetalInFormula(
     selectedReaction.unknownReactant.formulaTemplate,
     metalRevealed ? currentMetal : Metal.Sodium
@@ -39,6 +64,8 @@ function buildReactionSegments(
 
   const productFormula = selectedReaction.product.formula;
 
+  const secondaryCoeff = selectedReaction.secondaryProduct.coefficient > 1
+    ? `${selectedReaction.secondaryProduct.coefficient}` : '';
   const secondaryFormula = replaceMetalInFormula(
     selectedReaction.secondaryProduct.formulaTemplate,
     metalRevealed ? currentMetal : Metal.Sodium
@@ -48,7 +75,7 @@ function buildReactionSegments(
     : secondaryFormula.replace(/Na|Li|K/g, 'M');
 
   return [
-    { text: unknownDisplay, emphasize },
+    { text: `${unknownCoeff}${unknownDisplay}`, emphasize },
     { text: `(${selectedReaction.unknownReactant.state})`, isState: true },
     { text: ' + ' },
     { text: selectedReaction.knownReactant.formula },
@@ -57,114 +84,128 @@ function buildReactionSegments(
     { text: productFormula },
     { text: `(${selectedReaction.product.state})`, isState: true },
     { text: ' + ' },
-    { text: secondaryDisplay, emphasize },
+    { text: `${secondaryCoeff}${secondaryDisplay}`, emphasize },
     { text: `(${selectedReaction.secondaryProduct.state})`, isState: true },
   ];
 }
 
-function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, explore: boolean) {
+/**
+ * iOS [TextLine] — returns array of paragraphs (TextLine[]).
+ * Each paragraph is a TextSegment[]. Instruction lines are separate paragraphs in bold/orange.
+ */
+function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, explore: boolean): TextLine[] {
   if (explore) {
     switch (state.phase) {
       case 'chooseReaction':
-        return [{ text: 'Free Explore: Choose a reaction to begin experimenting freely.' }];
+        return [[{ text: 'Free Explore: Choose a reaction to begin experimenting freely.' }]];
       case 'reaction1':
-        return [{ text: 'The reaction is proceeding. A precipitate is forming...' }];
+        return [[{ text: 'The reaction is proceeding. A precipitate is forming...' }]];
       case 'weighProduct':
-        return [{ text: 'Drag the precipitate onto the scales to weigh it, then press Next.' }];
+        return [[{ text: 'Drag the precipitate onto the scales to weigh it, then press Next.' }]];
       case 'revealMetal':
-        return [
+        return [[
           { text: 'Press Next to reveal the identity of metal ' },
           { text: 'M', bold: true, color: 'rgb(220, 84, 59)' },
           { text: '.' },
-        ];
+        ]];
       case 'complete':
-        return [
+        return [[
           { text: 'The metal is ' },
           { text: state.currentMetal, bold: true, color: 'rgb(220, 84, 59)' },
           { text: '! Experiment complete.' },
-        ];
+        ]];
       default:
-        return [{ text: 'Add reactants freely, adjust water level, then click React to start.' }];
+        return [[{ text: 'Add reactants freely, adjust water level, then click React to start.' }]];
     }
   }
   switch (state.phase) {
     case 'chooseReaction':
       return [
-        { text: 'Stoichiometry has various applications. Let\'s find out more. ' },
-        { text: 'Choose a reaction.', bold: true },
+        [{ text: 'Stoichiometry has various applications. Let\'s find out more.' }],
+        [{ text: 'Choose a reaction.', bold: true }],
       ];
 
     // Educational intro (iOS steps 2-3)
     case 'explainPrecipitation':
-      return [
+      return [[
         { text: 'This is a Precipitation Reaction. How do I know? Well, one way is to notice that one of the product is a solid (s), so once reaction takes place, this solid will be produced and deposit as a precipitate. In this case ' },
         { text: state.selectedReaction?.product.formula ?? 'CaCO₃', bold: true },
-      ];
+      ]];
     case 'explainUnknownMetal':
-      return [
+      return [[
         { text: 'But there\'s something else that is strange about the reaction right? Well, ' },
         { text: 'M', bold: true, color: 'rgb(220, 84, 59)' },
         { text: ' is not a real element. M in this case represents just an alkaline metal. We will learn how stoichiometry can tell us which one of those 3 components is ' },
         { text: 'M', bold: true, color: 'rgb(220, 84, 59)' },
         { text: '.' },
-      ];
+      ]];
 
     case 'setWaterLevel':
       return [
-        { text: 'So this is a reaction that takes place in water, let\'s set the volume of water in the beaker. ' },
-        { text: 'Use the slider to set the volume.', bold: true },
+        [{ text: 'So this is a reaction that takes place in water, let\'s set the volume of water in the beaker.' }],
+        [{ text: 'Use the slider to set the volume.', bold: true }],
       ];
     case 'addKnown':
       return [
-        { text: 'Perfect! Now shake ' },
-        { text: state.selectedReaction?.knownReactant.formula ?? 'known reactant', bold: true },
-        { text: ' to prepare a solution of it. ' },
-        { text: 'Shake it into the beaker.', bold: true },
+        [
+          { text: 'Perfect! Now shake ' },
+          { text: state.selectedReaction?.knownReactant.formula ?? 'known reactant', bold: true },
+          { text: ' to prepare a solution of it.' },
+        ],
+        [{ text: 'Shake it into the beaker.', bold: true }],
       ];
     case 'addUnknown':
       return [
-        { text: `You added ${state.knownReactantMoles.toFixed(4)} moles of ` },
-        { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
-        { text: '. Now go ahead and add ' },
-        { text: state.metalRevealed
-            ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
-            : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
-          bold: true },
-        { text: ' and let\'s watch them react. ' },
-        { text: 'Notice the amount of grams added at the shaker. Keep shaking to see it react.', bold: true },
+        [
+          { text: `You added ${state.knownReactantMoles.toFixed(4)} moles of ` },
+          { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
+          { text: '. Now go ahead and add ' },
+          { text: state.metalRevealed
+              ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
+              : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
+            bold: true },
+          { text: ' and let\'s watch them react.' },
+        ],
+        [{ text: 'Notice the amount of grams added at the shaker. Keep shaking to see it react.', bold: true }],
       ];
     case 'reaction1':
       return [
-        { text: 'Perfect! You added ' },
-        { text: `${state.unknownReactantMassAdded.toFixed(2)} grams`, bold: true },
-        { text: ' of ' },
-        { text: state.metalRevealed
-            ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
-            : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
-          bold: true },
-        { text: '. Now let\'s just see the reaction going. ' },
-        { text: `Watch how ${state.selectedReaction?.product.formula ?? 'the product'} is produced.`, bold: true },
+        [
+          { text: 'Perfect! You added ' },
+          { text: `${state.unknownReactantMassAdded.toFixed(2)} grams`, bold: true },
+          { text: ' of ' },
+          { text: state.metalRevealed
+              ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
+              : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
+            bold: true },
+          { text: '. Now let\'s just see the reaction going.' },
+        ],
+        [{ text: `Watch how ${state.selectedReaction?.product.formula ?? 'the product'} is produced.`, bold: true }],
       ];
 
     // Post-reaction1 (iOS step 8)
     case 'endReaction1':
       return [
-        { text: 'The reaction is complete! Why don\'t you check out the macroscopic beaker to see the precipitate you produced! ' },
-        { text: 'Tap the toggle.', bold: true },
-        { text: ' You can also tap back or the run again button to see the reaction again.' },
+        [{ text: 'The reaction is complete! Why don\'t you check out the macroscopic beaker to see the precipitate you produced!' }],
+        [
+          { text: 'Tap the toggle.', bold: true },
+          { text: ' You can also tap back or the run again button to see the reaction again.' },
+        ],
       ];
 
     case 'weighProduct':
       return [
-        { text: 'Now, why don\'t you drag the solid ' },
-        { text: state.selectedReaction?.product.formula ?? 'product', bold: true },
-        { text: ' onto the scales to weigh it? ' },
-        { text: 'Drag the solid onto the scales.', bold: true },
+        [
+          { text: 'Now, why don\'t you drag the solid ' },
+          { text: state.selectedReaction?.product.formula ?? 'product', bold: true },
+          { text: ' onto the scales to weigh it?' },
+        ],
+        [{ text: 'Drag the solid onto the scales.', bold: true }],
       ];
 
     // Post-weighing explanation (iOS step 10)
     case 'postWeighing':
-      return [
+      return [[
         { text: `${state.productMassProduced.toFixed(2)} grams of ` },
         { text: state.selectedReaction?.product.formula ?? '', bold: true },
         { text: ` was produced. By dividing this by its Molar Mass, we know that it's ` },
@@ -177,7 +218,7 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
           bold: true },
         { text: ` we added are ` },
         { text: `${state.productMolesProduced.toFixed(4)} mol. But what does this mean?`, bold: true },
-      ];
+      ]];
 
     case 'revealMetal': {
       const unknownMolarMass = state.unknownReactantMolarMass;
@@ -185,46 +226,50 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
         ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
         : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M');
       const revealedFormula = replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal);
-      return [
+      return [[
         { text: `Well, if there are ${state.unknownReactantMassAdded.toFixed(2)} grams in ${state.productMolesProduced.toFixed(4)} moles of ${unknownFormula}, then how many are in 1 mol? There are ${unknownMolarMass} grams of ${unknownFormula}, in 1 mol. That's right, ${unknownMolarMass} g/mol is the Molar Mass of it, and ` },
         { text: `${revealedFormula}`, bold: true },
         { text: ` Molar Mass matches perfectly! So ` },
         { text: `M = ${state.currentMetal}`, bold: true, color: 'rgb(220, 84, 59)' },
-      ];
+      ]];
     }
     case 'addExtraUnknown': {
       const revealedFormula2 = replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal);
       return [
-        { text: 'We already discovered the mystery. At this point the ' },
-        { text: revealedFormula2, bold: true },
-        { text: ' is the Limiting Reagent, so just keep shaking ' },
-        { text: revealedFormula2, bold: true },
-        { text: ` to neutralize the ${state.selectedReaction?.knownReactant.formula ?? ''} in its entirety. ` },
-        { text: 'Keep shaking to see it react.', bold: true },
+        [
+          { text: 'We already discovered the mystery. At this point the ' },
+          { text: revealedFormula2, bold: true },
+          { text: ' is the Limiting Reagent, so just keep shaking ' },
+          { text: revealedFormula2, bold: true },
+          { text: ` to neutralize the ${state.selectedReaction?.knownReactant.formula ?? ''} in its entirety.` },
+        ],
+        [{ text: 'Keep shaking to see it react.', bold: true }],
       ];
     }
     case 'reaction2':
       return [
-        { text: 'Now just watch how the reactant you added produces more and more ' },
-        { text: state.selectedReaction?.product.formula ?? 'product', bold: true },
-        { text: ', as it neutralizes all of the ' },
-        { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
-        { text: ' that was left in the beaker. ' },
-        { text: 'Change between both Microscopic and Macroscopic views.', bold: true },
+        [
+          { text: 'Now just watch how the reactant you added produces more and more ' },
+          { text: state.selectedReaction?.product.formula ?? 'product', bold: true },
+          { text: ', as it neutralizes all of the ' },
+          { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
+          { text: ' that was left in the beaker.' },
+        ],
+        [{ text: 'Change between both Microscopic and Macroscopic views.', bold: true }],
       ];
 
     // Post-reaction2 (iOS step 14)
     case 'endReaction2':
-      return [
+      return [[
         { text: 'Done! All there\'s not more reactant left. In a real laboratory, you would be able to extract the precipitate of ' },
         { text: state.selectedReaction?.product.formula ?? '', bold: true },
         { text: ' with a filter and weight it to know the mass, so this could be applied to real life.' },
-      ];
+      ]];
 
     case 'complete':
-      return [{ text: 'Experiment complete. You identified the unknown metal using stoichiometry. Well done!' }];
+      return [[{ text: 'Experiment complete. You identified the unknown metal using stoichiometry. Well done!' }]];
     default:
-      return [{ text: '' }];
+      return [[{ text: '' }]];
   }
 }
 
@@ -239,10 +284,18 @@ export default function PrecipitationScreen() {
   const precipitateRef = useRef<HTMLDivElement>(null);
   const scalesRef = useRef<HTMLDivElement>(null);
 
-  const dropdownOptions = state.reactions.map((r) => ({
-    id: r.id,
-    label: r.name,
-  }));
+  // iOS: dropdown shows the full chemical equation with M placeholder
+  // e.g. "M₂CO₃(aq) + CaCl₂(aq) → CaCO₃(s) + 2MCl(aq)"
+  const dropdownOptions = state.reactions.map((r) => {
+    const unknownCoeff = r.unknownReactant.coefficient > 1 ? r.unknownReactant.coefficient : '';
+    const unknownDisplay = `${unknownCoeff}${r.unknownReactant.formulaTemplate}`;
+    const secondaryCoeff = r.secondaryProduct.coefficient > 1 ? r.secondaryProduct.coefficient : '';
+    const secondaryDisplay = `${secondaryCoeff}${r.secondaryProduct.formulaTemplate}`;
+    return {
+      id: r.id,
+      label: `${unknownDisplay}(${r.unknownReactant.state}) + ${r.knownReactant.formula}(${r.knownReactant.state}) → ${r.product.formula}(${r.product.state}) + ${secondaryDisplay}(${r.secondaryProduct.state})`,
+    };
+  });
 
   const handleSelectReaction = useCallback(
     (id: string) => {
@@ -313,11 +366,87 @@ export default function PrecipitationScreen() {
   const segments = buildReactionSegments(state);
   const guideStatement = getGuideStatement(state, exploreMode);
 
-  const showPrecipitate =
-    hasReaction &&
-    state.phase === 'weighProduct' &&
-    state.precipitatePosition === 'beaker' &&
-    state.beakerView === 'macroscopic';
+  // Measure bottle→beaker fall distance for pour animation
+  const containersRowRef = useRef<HTMLDivElement>(null);
+  const beakerWrapperRef = useRef<HTMLDivElement>(null);
+  const [fallDistance, setFallDistance] = useState('140px');
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const cEl = containersRowRef.current;
+      const bEl = beakerWrapperRef.current;
+      if (cEl && bEl) {
+        const cRect = cEl.getBoundingClientRect();
+        const waterSurface = bEl.querySelector('[data-water-surface]');
+        if (waterSurface) {
+          const wsRect = waterSurface.getBoundingClientRect();
+          const dist = wsRect.top - cRect.bottom;
+          setFallDistance(`${Math.max(40, Math.round(dist))}px`);
+        } else {
+          const bRect = bEl.getBoundingClientRect();
+          const dist = bRect.top + bRect.height * 0.4 - cRect.bottom;
+          setFallDistance(`${Math.max(40, Math.round(dist))}px`);
+        }
+      }
+    };
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+    };
+  }, [hasReaction, state.waterLevel]);
+
+  // Precipitate position: measures beaker water center and scales center
+  // relative to beakerScalesRow, and transitions smoothly between them (iOS: easeOut 0.25s)
+  const beakerScalesRowRef = useRef<HTMLDivElement>(null);
+  const [precipitatePos, setPrecipitatePos] = useState<{ left: string; top: string }>({
+    left: '50%',
+    top: '70%',
+  });
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const rowEl = beakerScalesRowRef.current;
+      const beakerEl = beakerWrapperRef.current;
+      const scalesEl = scalesRef.current;
+      if (!rowEl) return;
+      const rowRect = rowEl.getBoundingClientRect();
+
+      if (state.precipitatePosition === 'beaker' && beakerEl) {
+        // iOS: precipitate sits at center of water column
+        const waterSurface = beakerEl.querySelector('[data-water-surface]');
+        const beakerRect = beakerEl.getBoundingClientRect();
+        const beakerCenterX = beakerRect.left + beakerRect.width / 2 - rowRect.left;
+
+        let waterCenterY: number;
+        if (waterSurface) {
+          const wsRect = waterSurface.getBoundingClientRect();
+          // Center between water surface and beaker bottom
+          waterCenterY = (wsRect.top + beakerRect.bottom) / 2 - rowRect.top;
+        } else {
+          waterCenterY = beakerRect.top + beakerRect.height * 0.7 - rowRect.top;
+        }
+
+        setPrecipitatePos({
+          left: `${beakerCenterX}px`,
+          top: `${waterCenterY}px`,
+        });
+      } else if (state.precipitatePosition === 'scales' && scalesEl) {
+        const scalesRect = scalesEl.getBoundingClientRect();
+        setPrecipitatePos({
+          left: `${scalesRect.left + scalesRect.width / 2 - rowRect.left}px`,
+          top: `${scalesRect.top + scalesRect.height * 0.3 - rowRect.top}px`,
+        });
+      }
+    };
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+    };
+  }, [state.precipitatePosition, state.waterLevel, hasReaction]);
 
   const isReactionPhase = state.phase === 'reaction1' || state.phase === 'reaction2' || state.phase === 'weighProduct' || state.phase === 'revealMetal' || state.phase === 'complete';
   const knownContainerActive = exploreMode ? (hasReaction && !isReactionPhase) : state.phase === 'addKnown';
@@ -329,15 +458,15 @@ export default function PrecipitationScreen() {
       <BranchMenu currentRoute={location.pathname} />
       {/* Top bar: equation + controls */}
       <div className={styles.topBar}>
-        <div className={styles.equationArea}>
+        <div className={styles.equationArea} style={highlightStyle(state.highlights, 'reactionDefinition')}>
           {hasReaction && <EquationDisplay segments={segments} />}
         </div>
-        <div className={styles.controls}>
+        <div className={styles.controls} style={highlightStyle(state.highlights, 'reactionToggle')}>
           <DropdownSelector
             options={dropdownOptions}
             selectedId={state.selectedReaction?.id ?? null}
             onChange={handleSelectReaction}
-            disabled={exploreMode ? false : state.phase !== 'chooseReaction'}
+            disabled={exploreMode ? false : (state.phase !== 'chooseReaction' && state.phase !== 'complete')}
             placeholder="Choose a reaction"
           />
         </div>
@@ -347,45 +476,61 @@ export default function PrecipitationScreen() {
         <div className={styles.mainContent}>
           {/* Left column */}
           <div className={styles.leftColumn}>
-            <div className={styles.containersRow}>
-              <ShakingContainer
-                color={state.selectedReaction!.knownReactant.color}
-                label={state.selectedReaction!.knownReactant.formula}
-                onPour={() => state.addReactant('known', 5)}
-                disabled={!knownContainerActive}
-                isActive={knownContainerActive}
-                tooltipText={
-                  knownContainerActive
-                    ? `${state.knownMoleculeCount} molecules`
-                    : undefined
-                }
-              />
-              <ShakingContainer
-                color={state.selectedReaction!.unknownReactant.color}
-                label={
-                  state.metalRevealed
-                    ? replaceMetalInFormula(
-                        state.selectedReaction!.unknownReactant.formulaTemplate,
-                        state.currentMetal
-                      )
-                    : replaceMetalInFormula(
-                        state.selectedReaction!.unknownReactant.formulaTemplate,
-                        Metal.Sodium
-                      ).replace(/Na|Li|K/g, 'M')
-                }
-                onPour={() => state.addReactant('unknown', 5)}
-                disabled={!unknownContainerActive}
-                isActive={unknownContainerActive}
-                tooltipText={
-                  unknownContainerActive && state.unknownReactantMassAdded > 0
-                    ? `${state.unknownReactantMassAdded.toFixed(2)} g`
-                    : undefined
-                }
-              />
+            <div className={styles.containersRow} ref={containersRowRef}>
+              <div style={highlightStyle(state.highlights, 'knownReactantContainer')}>
+                <ShakingContainer
+                  color={state.selectedReaction!.knownReactant.color}
+                  label={state.selectedReaction!.knownReactant.formula}
+                  onPour={() => state.addReactant('known', 5)}
+                  disabled={!knownContainerActive}
+                  isActive={knownContainerActive}
+                  tooltipText={
+                    knownContainerActive
+                      ? `${state.knownMoleculeCount} molecules`
+                      : undefined
+                  }
+                  fallDistance={fallDistance}
+                />
+              </div>
+              <div style={highlightStyle(state.highlights, 'unknownReactantContainer')}>
+                <ShakingContainer
+                  color={state.selectedReaction!.unknownReactant.color}
+                  label={
+                    state.metalRevealed
+                      ? replaceMetalInFormula(
+                          state.selectedReaction!.unknownReactant.formulaTemplate,
+                          state.currentMetal
+                        )
+                      : replaceMetalInFormula(
+                          state.selectedReaction!.unknownReactant.formulaTemplate,
+                          Metal.Sodium
+                        ).replace(/Na|Li|K/g, 'M')
+                  }
+                  onPour={() => state.addReactant('unknown', 5)}
+                  disabled={!unknownContainerActive}
+                  isActive={unknownContainerActive}
+                  tooltipText={
+                    unknownContainerActive && state.unknownReactantMassAdded > 0
+                      ? `${state.unknownReactantMassAdded.toFixed(2)} g`
+                      : undefined
+                  }
+                  fallDistance={fallDistance}
+                />
+              </div>
             </div>
 
-            <div className={styles.beakerScalesRow}>
-              <div className={styles.beakerWrapper}>
+            <div className={styles.beakerScalesRow} ref={beakerScalesRowRef}>
+              <div
+                className={styles.beakerWrapper}
+                ref={beakerWrapperRef}
+                style={
+                  state.highlights.length > 0
+                    ? (state.highlights.includes('beaker') || state.highlights.includes('waterSlider'))
+                      ? { transition: 'opacity 0.3s ease, filter 0.3s ease' }
+                      : { opacity: 0.35, filter: 'saturate(0.3)', transition: 'opacity 0.3s ease, filter 0.3s ease' }
+                    : {}
+                }
+              >
                 <FillableBeaker
                   waterLevel={state.waterLevel}
                   onWaterLevelChange={state.setWaterLevel}
@@ -394,37 +539,63 @@ export default function PrecipitationScreen() {
                 >
                 {state.beakerView === 'microscopic' ? (
                   <BeakerMoleculeGrid
-                    molecules={[...state.knownMolecules, ...state.unknownMolecules]}
+                    molecules={state.reactionMolecules}
                     animated
-                  />
-                ) : state.reactionProgress > 0 && state.precipitatePosition === 'beaker' && state.phase !== 'weighProduct' ? (
-                  <PrecipitateShape
-                    progress={state.reactionProgress}
-                    color={state.selectedReaction!.product.color}
-                    size={90}
                   />
                 ) : null}
               </FillableBeaker>
 
-              {showPrecipitate && (state.phase === 'weighProduct' || (exploreMode && state.reactionProgress > 0 && state.precipitatePosition === 'beaker')) && (
+              {/* iOS "Run again?" button — shown after reactions complete */}
+              {state.showRunAgain && (
+                <button
+                  type="button"
+                  className={styles.runAgainButton}
+                  onClick={state.runReactionAgain}
+                >
+                  Run again?
+                </button>
+              )}
+              </div>
+
+              <div className={styles.scalesArea} ref={scalesRef}>
+                <DigitalScales
+                  mass={state.precipitateMass}
+                  isDropTarget={state.isDropTarget}
+                  showMass={state.precipitatePosition === 'scales'}
+                />
+              </div>
+
+              {/* Unified precipitate — animates between beaker center and scales */}
+              {hasReaction && state.reactionProgress > 0 && state.beakerView === 'macroscopic' && (
                 <div
                   ref={precipitateRef}
-                  className={styles.precipitateDraggable}
+                  className={`${styles.precipitateAnimated} ${
+                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
+                      ? styles.precipitateDraggable
+                      : ''
+                  }`}
                   style={{
-                    position: 'absolute',
-                    left: '50%',
-                    bottom: '25%',
-                    width: 60,
-                    height: 60,
+                    ...precipitatePos,
                     transform: dragOffset
-                      ? `translate(calc(-50% + ${dragOffset.x}px), ${dragOffset.y}px)`
-                      : 'translateX(-50%)',
+                      ? `translate(calc(-50% + ${dragOffset.x}px), calc(-50% + ${dragOffset.y}px))`
+                      : 'translate(-50%, -50%)',
                     zIndex: 10,
-                    cursor: dragOffset ? 'grabbing' : 'grab',
                   }}
-                  onPointerDown={handlePointerDown}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
+                  onPointerDown={
+                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
+                      ? handlePointerDown
+                      : undefined
+                  }
+                  onPointerMove={
+                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
+                      ? handlePointerMove
+                      : undefined
+                  }
+                  onPointerUp={
+                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
+                      ? handlePointerUp
+                      : undefined
+                  }
                 >
                   <PrecipitateShape
                     progress={state.reactionProgress}
@@ -433,27 +604,22 @@ export default function PrecipitationScreen() {
                   />
                 </div>
               )}
-              </div>
-
-              <div className={styles.scalesArea} ref={scalesRef}>
-                {state.precipitatePosition === 'scales' && (
-                  <div className={styles.scalePrecipitate}>
-                    <PrecipitateShape
-                      progress={state.reactionProgress}
-                      color={state.selectedReaction!.product.color}
-                      size={44}
-                    />
-                  </div>
-                )}
-                <DigitalScales
-                  mass={state.precipitateMass}
-                  isDropTarget={state.isDropTarget}
-                  showMass={state.precipitatePosition === 'scales'}
-                />
-              </div>
             </div>
 
-            <div className={styles.toggleArea}>
+            {/* Hand gesture animation: guides user to drag precipitate → scales */}
+            <MovingHand
+              startRef={precipitateRef}
+              endRef={scalesRef}
+              visible={
+                state.phase === 'weighProduct' &&
+                state.precipitatePosition === 'beaker' &&
+                state.beakerView === 'macroscopic' &&
+                !dragOffset
+              }
+              showDelay={2}
+            />
+
+            <div className={styles.toggleArea} style={highlightStyle(state.highlights, 'beakerToggle')}>
               <BeakerToggle
                 view={state.beakerView}
                 onChange={state.toggleBeakerView}
@@ -464,7 +630,16 @@ export default function PrecipitationScreen() {
 
           {/* Middle column */}
           <div className={styles.middleColumn}>
-            <div className={styles.tableWrapper}>
+            <div
+              className={styles.tableWrapper}
+              style={
+                state.highlights.length > 0
+                  ? (state.highlights.includes('metalTable') || state.highlights.includes('correctMetalRow'))
+                    ? { transition: 'opacity 0.3s ease, filter 0.3s ease' }
+                    : { opacity: 0.35, filter: 'saturate(0.3)', transition: 'opacity 0.3s ease, filter 0.3s ease' }
+                  : {}
+              }
+            >
               <MetalTable
                 reaction={state.selectedReaction!}
                 revealedMetal={state.metalRevealed ? state.currentMetal : null}
@@ -513,20 +688,22 @@ export default function PrecipitationScreen() {
                   })()}
                 </div>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                  <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.knownReactant.color }} />
-                      <span className={styles.chartLabel}>KR</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.unknownReactant.color }} />
-                      <span className={styles.chartLabel}>UR</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.product.color }} />
-                      <span className={styles.chartLabel}>P</span>
-                    </div>
-                  </>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.knownReactant.color }} />
+                    <span className={styles.chartLabel}>{state.selectedReaction.knownReactant.formula}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.unknownReactant.color }} />
+                    <span className={styles.chartLabel}>
+                      {state.metalRevealed
+                        ? replaceMetalInFormula(state.selectedReaction.unknownReactant.formulaTemplate, state.currentMetal)
+                        : replaceMetalInFormula(state.selectedReaction.unknownReactant.formulaTemplate, Metal.Sodium).replace(/Na|Li|K/g, 'M')}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.product.color }} />
+                    <span className={styles.chartLabel}>{state.selectedReaction.product.formula}</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -570,7 +747,7 @@ export default function PrecipitationScreen() {
               {/* Product moles: n = m / MM */}
               {state.equationState === 'showAll' && (
                 <>
-                  <div className={styles.equationGroup}>
+                  <div className={styles.equationGroup} style={highlightStyle(state.highlights, 'productMoles')}>
                     <div className={styles.equationLine}>
                       <span style={{ fontStyle: 'italic' }}>n</span>
                       <sub>{state.selectedReaction!.product.formula}</sub>
@@ -599,7 +776,7 @@ export default function PrecipitationScreen() {
                   </div>
 
                   {/* Unknown reactant moles */}
-                  <div className={styles.equationGroup}>
+                  <div className={styles.equationGroup} style={highlightStyle(state.highlights, 'unknownReactantMoles')}>
                     <div className={styles.equationLine}>
                       <span style={{ fontStyle: 'italic' }}>n</span>
                       <sub>{state.selectedReaction!.product.formula}</sub>
@@ -623,7 +800,7 @@ export default function PrecipitationScreen() {
                   </div>
 
                   {/* Unknown reactant molar mass: MM = m / n */}
-                  <div className={styles.equationGroup}>
+                  <div className={styles.equationGroup} style={highlightStyle(state.highlights, 'unknownReactantMolarMass')}>
                     <div className={styles.equationLine}>
                       MM<sub>unknown</sub>
                       {' = '}

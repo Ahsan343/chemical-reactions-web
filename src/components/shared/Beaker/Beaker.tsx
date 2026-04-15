@@ -342,6 +342,19 @@ export function Beaker({
           </div>
         );
       })()}
+
+      {/* Invisible marker at the water surface for pour-animation targeting */}
+      <div
+        data-water-surface="true"
+        style={{
+          position: 'absolute',
+          top: liquidTop,
+          left: 0,
+          width: '100%',
+          height: 0,
+          pointerEvents: 'none',
+        }}
+      />
     </div>
   );
 }

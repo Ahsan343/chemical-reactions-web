@@ -1,6 +1,7 @@
 .overlay {
   transition: filter 0.3s ease, opacity 0.3s ease;
   position: relative;
+  overflow: visible;
 }
 
 // iOS uses `.colorMultiply(Styling.inactiveScreenElement)` where

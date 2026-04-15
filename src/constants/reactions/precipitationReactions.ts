@@ -20,6 +20,7 @@ export const precipitationReactions: PrecipitationReactionDef[] = [
       color: PrecipitationColors.reaction1.unknownReactant,
       latterPartMolarMass: 60,
       metalAtomCount: 2,
+      coefficient: 1,
     },
     product: {
       formula: 'CaCO₃',
@@ -30,6 +31,7 @@ export const precipitationReactions: PrecipitationReactionDef[] = [
     secondaryProduct: {
       formulaTemplate: 'MCl',
       state: ElementState.Aqueous,
+      coefficient: 2,
     },
     metals: [Metal.Sodium, Metal.Lithium, Metal.Potassium],
   },
@@ -47,6 +49,7 @@ export const precipitationReactions: PrecipitationReactionDef[] = [
       color: PrecipitationColors.reaction2.unknownReactant,
       latterPartMolarMass: 127,
       metalAtomCount: 1,
+      coefficient: 2,
     },
     product: {
       formula: 'PbI₂',
@@ -57,6 +60,7 @@ export const precipitationReactions: PrecipitationReactionDef[] = [
     secondaryProduct: {
       formulaTemplate: 'MNO₃',
       state: ElementState.Aqueous,
+      coefficient: 2,
     },
     metals: [Metal.Sodium, Metal.Lithium, Metal.Potassium],
   },

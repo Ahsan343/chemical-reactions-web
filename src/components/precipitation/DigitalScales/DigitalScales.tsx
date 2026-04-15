@@ -7,17 +7,19 @@ interface DigitalScalesProps {
 }
 
 export default function DigitalScales({ mass, isDropTarget, showMass }: DigitalScalesProps) {
-  const displayNumber = showMass && mass !== null ? mass.toFixed(2) : '0.00';
+  const displayText = showMass && mass !== null ? `${mass.toFixed(2)} g` : null;
 
   return (
     <div className={styles.scales} aria-label="Digital scales">
+      {/* iOS: ZStack(alignment: .bottom) → platform at top, then base */}
       <div className={`${styles.container} ${isDropTarget ? styles.containerEmphasised : ''}`}>
         <div className={styles.platform} />
         <div className={styles.containerBase} />
       </div>
+      {/* iOS: RoundedRectangle(darkColor) with white text frame inside */}
       <div className={styles.display}>
         <div className={styles.displayTextFrame}>
-          {displayNumber}
+          {displayText ?? ''}
         </div>
       </div>
     </div>

@@ -2,44 +2,65 @@ import { type TextLine, type TextSegment } from '../guide/useGuideStore';
 import styles from './BeakyBox.module.scss';
 
 interface BeakyBoxProps {
-  statement: TextLine;
+  /** iOS [TextLine] — array of paragraphs, each paragraph is a TextSegment[].
+   *  Also accepts a single TextLine (flat segment array) for backward compat. */
+  statement: TextLine | TextLine[];
   onNext: () => void;
   onBack: () => void;
   canGoNext: boolean;
   showBack: boolean;
-  /** Width of the speech bubble in px (default 220) */
+  /** Width of the speech bubble body in px (default 300) */
   bubbleWidth?: number;
-  /** Height of the speech bubble in px (default 120) */
+  /** Min height of the speech bubble in px (default 160) */
   bubbleHeight?: number;
 }
 
 // iOS emphasis color (CorePalette.orangeAccent = rgb(220,84,59))
 const EMPHASIS_COLOR = 'rgb(220, 84, 59)';
 
-function renderSegment(segment: TextSegment, index: number) {
+function renderSegment(segment: TextSegment, index: number, fontSize: number) {
   let content: React.ReactNode = segment.text;
 
+  // iOS: subscript/superscript at 65% of base font, offset ±0.26 * fontSize
   if (segment.subscript) {
-    content = <sub>{content}</sub>;
+    content = (
+      <sub style={{ fontSize: fontSize * 0.65 }}>{content}</sub>
+    );
   }
   if (segment.superscript) {
-    content = <sup>{content}</sup>;
+    content = (
+      <sup style={{ fontSize: fontSize * 0.65 }}>{content}</sup>
+    );
   }
 
-  // iOS renders emphasised text in orange (same weight, NOT bold).
-  // We treat `bold: true` as the iOS "emphasised" flag.
+  // iOS: emphasis is ONLY a color change to orange — same .regular font weight.
+  // The `bold` flag in our TextSegment maps to iOS "emphasised" (color, not weight).
   const emphasisColor = segment.bold ? EMPHASIS_COLOR : undefined;
   const color = segment.color ?? emphasisColor;
 
   return (
-    <span
-      key={index}
-      className={styles.segment}
-      style={color ? { color } : undefined}
-    >
+    <span key={index} style={color ? { color } : undefined}>
       {content}
     </span>
   );
+}
+
+/**
+ * iOS TextLinesView: renders [TextLine] as paragraphs separated by \n\n.
+ * Accepts either a single TextLine or TextLine[] (multiple paragraphs).
+ */
+function renderParagraphs(statement: TextLine | TextLine[], fontSize: number) {
+  // Detect if it's a single flat TextLine or array of paragraphs
+  const paragraphs: TextLine[] =
+    statement.length > 0 && Array.isArray((statement as TextLine[])[0])
+      ? (statement as TextLine[])
+      : [statement as TextLine];
+
+  return paragraphs.map((line, pIdx) => (
+    <p key={pIdx} className={styles.paragraph}>
+      {line.map((segment, sIdx) => renderSegment(segment, sIdx, fontSize))}
+    </p>
+  ));
 }
 
 export default function BeakyBox({
@@ -48,27 +69,28 @@ export default function BeakyBox({
   onBack,
   canGoNext,
   showBack,
-  bubbleWidth = 220,
-  bubbleHeight = 120,
+  bubbleWidth = 300,
+  bubbleHeight = 160,
 }: BeakyBoxProps) {
-  const stemWidth = bubbleWidth * 0.15;
+  // iOS geometry settings
+  const cornerRadius = bubbleWidth * 0.1;
+  const stemWidth = bubbleWidth * 0.08;
   const stemHeight = stemWidth * 1.1;
   const stemCornerRadius = stemWidth * 0.3;
-  const bubbleFontSize = bubbleWidth * 0.06;
-  const beakyHeight = bubbleWidth * 0.4;
-  const navButtonSize = bubbleHeight * 0.2;
-  const cornerRadius = bubbleWidth * 0.1;
-  const bodyWidth = bubbleWidth - stemWidth;
+  const fontSize = Math.max(bubbleWidth * 0.05, 13);
+  const beakyHeight = bubbleWidth * 0.3;
+  const navButtonSize = Math.max(bubbleHeight * 0.22, 28);
+  // iOS: padding = min(width, height) * 0.06
+  const padding = Math.max(Math.min(bubbleWidth, bubbleHeight) * 0.06, 12);
+  const bodyWidth = bubbleWidth;
 
-  const nextButtonWidth = Math.min(
-    0.9 * (bubbleWidth - stemWidth - navButtonSize),
-    3.2 * navButtonSize
-  );
-
-  const controlsWidth = bubbleWidth - stemWidth;
+  const nextButtonMaxWidth = 0.9 * (bubbleWidth - stemWidth - navButtonSize);
+  const nextButtonWidth = Math.min(nextButtonMaxWidth, 3.2 * navButtonSize);
+  const controlsWidth = bubbleWidth;
 
   return (
     <div className={styles.container}>
+      {/* Top row: speech bubble + Beaky avatar */}
       <div className={styles.topRow}>
         <div
           className={styles.bubble}
@@ -76,14 +98,16 @@ export default function BeakyBox({
             width: bodyWidth,
             minHeight: bubbleHeight,
             borderRadius: cornerRadius,
-            fontSize: Math.max(bubbleFontSize, 11),
-            padding: Math.min(bodyWidth, bubbleHeight) * 0.06,
+            fontSize,
+            padding,
+            marginRight: stemWidth + 4,
           }}
         >
-          <p className={styles.bubbleText}>
-            {statement.map((segment, i) => renderSegment(segment, i))}
-          </p>
+          <div className={styles.bubbleText}>
+            {renderParagraphs(statement, fontSize)}
+          </div>
 
+          {/* Stem: triangular tail pointing right toward Beaky */}
           <div className={styles.bubbleStem}>
             <svg
               className={styles.bubbleStemSvg}
@@ -99,22 +123,23 @@ export default function BeakyBox({
           </div>
         </div>
 
+        {/* Beaky character */}
         <div
           className={styles.avatar}
-          style={{ height: beakyHeight, width: beakyHeight * 0.7 }}
+          style={{ height: beakyHeight, width: beakyHeight * 0.542 }}
           aria-hidden="true"
         >
           <img
             className={styles.avatarImg}
             src="/beaky.png"
             alt="Beaky character"
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
         </div>
       </div>
 
+      {/* Navigation buttons */}
       <div className={styles.controls} style={{ width: controlsWidth }}>
-        {showBack && (
+        {showBack ? (
           <button
             type="button"
             className={styles.backButton}
@@ -122,17 +147,20 @@ export default function BeakyBox({
             aria-label="Previous"
             style={{ width: navButtonSize, height: navButtonSize }}
           >
+            {/* iOS: arrowtriangle.left.fill */}
             <svg
               className={styles.backIcon}
-              width={navButtonSize * 0.5}
-              height={navButtonSize * 0.5}
+              width={navButtonSize * 0.4}
+              height={navButtonSize * 0.4}
               viewBox="0 0 12 12"
             >
-              <path d="M8 1L3 6l5 5" fill="#000" />
+              <path d="M9 1L3 6l6 5z" fill="#000" />
             </svg>
           </button>
+        ) : (
+          <div style={{ width: navButtonSize }} />
         )}
-        {!showBack && <div />}
+
         <button
           type="button"
           className={styles.nextButton}
@@ -142,30 +170,32 @@ export default function BeakyBox({
           style={{
             width: nextButtonWidth,
             height: navButtonSize,
-            fontSize: navButtonSize * 0.6,
-            borderWidth: navButtonSize * 0.08,
+            fontSize: navButtonSize * 0.5,
+            borderWidth: Math.max(navButtonSize * 0.07, 1.5),
           }}
         >
           <span
             className={styles.nextLabel}
-            style={{
-              width: nextButtonWidth - 1.5 * navButtonSize,
-              fontSize: navButtonSize * 0.6,
-            }}
+            style={{ fontSize: navButtonSize * 0.5 }}
           >
             Next
           </span>
+          {/* Orange circle with right-arrow on the right side */}
           <span
             className={styles.nextIcon}
-            style={{ width: navButtonSize, height: navButtonSize }}
+            style={{
+              width: navButtonSize - 2,
+              height: navButtonSize - 2,
+              minWidth: navButtonSize - 2,
+            }}
           >
             <svg
               className={styles.nextIconSvg}
-              width={navButtonSize * 0.4}
-              height={navButtonSize * 0.4}
+              width={navButtonSize * 0.32}
+              height={navButtonSize * 0.32}
               viewBox="0 0 12 12"
             >
-              <path d="M4 1l5 5-5 5" fill="rgb(232, 232, 232)" />
+              <path d="M4 1l5 5-5 5z" fill="rgb(232, 232, 232)" />
             </svg>
           </span>
         </button>
@@ -174,14 +204,18 @@ export default function BeakyBox({
   );
 }
 
+/**
+ * iOS SpeechBubbleStem shape (from SpeechBubble.swift):
+ *   bottomLeft(0, h) → topRight(w, cr) → topPreCurve(cr, cr)
+ *   → quadCurve to (0, 0) with control (0, cr)
+ * Creates a small curved tail pointing right toward Beaky.
+ */
 function buildStemPath(w: number, h: number, cr: number): string {
-  // Triangular stem pointing right, with a small corner radius at top
-  // Matches iOS SpeechBubbleStem shape
   return [
-    `M 0 ${h}`,
-    `L ${w} ${cr}`,
-    `L ${cr} ${cr}`,
-    `Q 0 ${cr} 0 0`,
+    `M 0 ${h}`,                    // bottom-left
+    `L ${w} ${cr}`,                // top-right (the point toward Beaky)
+    `L ${cr} ${cr}`,               // top pre-curve
+    `Q 0 ${cr}, 0 0`,             // quad curve back to origin
     'Z',
   ].join(' ');
 }

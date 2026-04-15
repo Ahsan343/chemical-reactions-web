@@ -91,6 +91,7 @@ export interface PrecipitationReactionDef {
     color: string;
     latterPartMolarMass: number;
     metalAtomCount: number;
+    coefficient: number;
   };
   product: {
     formula: string;
@@ -101,6 +102,7 @@ export interface PrecipitationReactionDef {
   secondaryProduct: {
     formulaTemplate: string;
     state: ElementState;
+    coefficient: number;
   };
   metals: Metal[];
 }

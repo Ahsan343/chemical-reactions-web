@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Metal,
   type PrecipitationReactionDef,
@@ -39,6 +39,63 @@ type Phase =
 
 type EquationState = 'blank' | 'showMolarity' | 'showAll';
 
+/**
+ * iOS ScreenElement — determines which UI elements are highlighted (bright)
+ * vs dimmed (grayed out) at each step. Matches PrecipitationScreenViewModel.ScreenElement.
+ */
+export type HighlightElement =
+  | 'reactionToggle'
+  | 'reactionDefinition'
+  | 'waterSlider'
+  | 'knownReactantContainer'
+  | 'unknownReactantContainer'
+  | 'productMoles'
+  | 'unknownReactantMoles'
+  | 'unknownReactantMolarMass'
+  | 'correctMetalRow'
+  | 'metalTable'
+  | 'beaker'
+  | 'beakerToggle';
+
+/**
+ * iOS HighlightedElements: when non-empty, only the listed elements render
+ * at full brightness; all others are dimmed to rgb(200,200,200).
+ * When empty, all elements are at full brightness (no dimming).
+ */
+function getHighlightsForPhase(phase: Phase): HighlightElement[] {
+  switch (phase) {
+    case 'chooseReaction':
+      return ['reactionToggle'];
+    case 'explainPrecipitation':
+      return ['reactionDefinition'];
+    case 'explainUnknownMetal':
+      return ['reactionDefinition', 'metalTable'];
+    case 'setWaterLevel':
+      return ['waterSlider', 'beaker'];
+    case 'addKnown':
+      return ['knownReactantContainer', 'beaker'];
+    case 'addUnknown':
+    case 'addExtraUnknown':
+      return ['unknownReactantContainer', 'beaker'];
+    case 'reaction1':
+    case 'reaction2':
+      return []; // cleared — everything bright
+    case 'endReaction1':
+    case 'endReaction2':
+      return ['beaker', 'beakerToggle'];
+    case 'weighProduct':
+      return []; // cleared — everything bright for drag interaction
+    case 'postWeighing':
+      return ['productMoles', 'unknownReactantMoles'];
+    case 'revealMetal':
+      return ['unknownReactantMolarMass', 'correctMetalRow'];
+    case 'complete':
+      return []; // no dimming
+    default:
+      return [];
+  }
+}
+
 interface MoleculeDot {
   color: string;
   x: number;
@@ -54,20 +111,42 @@ const GRID_ROWS = 10;
 const GRID_COLS = 19;
 const GRID_SIZE = GRID_ROWS * GRID_COLS;
 
-function generateMoleculePositions(count: number, color: string, waterLevel: number = 1): MoleculeDot[] {
+/**
+ * iOS-style grid-based molecule placement (19 cols × 10 rows).
+ * Randomly fills grid cells within the water region, avoiding already-occupied cells.
+ * This produces an organized, non-overlapping layout matching iOS MoleculeGridSettings.
+ */
+function generateMoleculePositions(
+  count: number,
+  color: string,
+  waterLevel: number = 1,
+  existingDots: MoleculeDot[] = [],
+): MoleculeDot[] {
   const dots: MoleculeDot[] = [];
-  // Only place molecules within the water-filled region (bottom portion).
-  // y=0 is top, y=1 is bottom. Water fills from bottom up to (1 - waterLevel).
-  // Add 0.08 padding below the water surface so dots don't get clipped at the top edge.
-  const waterSurface = 1 - Math.min(1, Math.max(0, waterLevel));
-  const minY = Math.max(0.08, waterSurface + 0.08);
-  const maxY = 0.92;
-  const yRange = maxY - minY;
+  const occupied = new Set(
+    existingDots.map((p) => `${Math.round(p.x * GRID_COLS)},${Math.round(p.y * GRID_ROWS)}`),
+  );
+
+  // Water surface row: waterLevel 0→1 means 0%→100% filled from bottom.
+  // Row 0 = top, GRID_ROWS-1 = bottom.
+  const surfaceRow = Math.floor(GRID_ROWS * (1 - Math.min(1, Math.max(0, waterLevel))));
+  const minRow = Math.min(surfaceRow + 1, GRID_ROWS - 1);
+  const availableRows = Math.max(1, GRID_ROWS - minRow);
+
   for (let i = 0; i < count; i++) {
+    let attempts = 0;
+    let col: number;
+    let row: number;
+    do {
+      col = Math.floor(Math.random() * GRID_COLS);
+      row = minRow + Math.floor(Math.random() * availableRows);
+      attempts++;
+    } while (occupied.has(`${col},${row}`) && attempts < 100);
+    occupied.add(`${col},${row}`);
     dots.push({
       color,
-      x: 0.1 + Math.random() * 0.8,
-      y: minY + Math.random() * yRange,
+      x: (col + 0.5) / GRID_COLS,
+      y: (row + 0.5) / GRID_ROWS,
     });
   }
   return dots;
@@ -91,6 +170,8 @@ export interface PrecipitationState {
 
   knownMolecules: MoleculeDot[];
   unknownMolecules: MoleculeDot[];
+  /** Combined molecule dots for beaker view during reactions — includes fading reactants + appearing products */
+  reactionMolecules: MoleculeDot[];
 
   unknownReactantMolarMass: number;
   knownReactantMolarity: number;
@@ -100,6 +181,10 @@ export interface PrecipitationState {
   unknownReactantMoles: number;
   unknownReactantMassAdded: number;
 
+  showRunAgain: boolean;
+  /** iOS HighlightedElements — which elements are active/highlighted at this step */
+  highlights: HighlightElement[];
+
   selectReaction: (reaction: PrecipitationReactionDef) => void;
   toggleBeakerView: (view: BeakerView) => void;
   setWaterLevel: (level: number) => void;
@@ -107,6 +192,7 @@ export interface PrecipitationState {
   dragPrecipitate: (position: PrecipitatePosition) => void;
   setDropTarget: (active: boolean) => void;
   weighProduct: () => void;
+  runReactionAgain: () => void;
   next: () => void;
   back: () => void;
   canGoNext: boolean;
@@ -128,6 +214,31 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
   const [metalRevealed, setMetalRevealed] = useState(false);
   const [phase, setPhase] = useState<Phase>('chooseReaction');
   const [isDropTarget, setIsDropTarget] = useState(false);
+  const [productMolecules, setProductMolecules] = useState<MoleculeDot[]>([]);
+  const reactionAnimRef = useRef<number | null>(null);
+
+  /**
+   * Animate reactionProgress from `from` to `to` over `durationMs` (iOS: 3s linear).
+   * Uses requestAnimationFrame for smooth interpolation that drives both the
+   * precipitate growth and the chart molecule counts.
+   */
+  const animateReaction = useCallback((from: number, to: number, durationMs: number, onComplete?: () => void) => {
+    if (reactionAnimRef.current) cancelAnimationFrame(reactionAnimRef.current);
+    setReactionProgress(from);
+    const start = performance.now();
+    const step = (now: number) => {
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / durationMs); // linear 0→1
+      setReactionProgress(from + (to - from) * t);
+      if (t < 1) {
+        reactionAnimRef.current = requestAnimationFrame(step);
+      } else {
+        reactionAnimRef.current = null;
+        onComplete?.();
+      }
+    };
+    reactionAnimRef.current = requestAnimationFrame(step);
+  }, []);
 
   const volume = waterLevel;
 
@@ -170,15 +281,44 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     return productMassProduced * reactionProgress;
   }, [precipitatePosition, productMassProduced, reactionProgress]);
 
-  const knownMolecules = useMemo(() => {
-    if (!selectedReaction) return [];
-    return generateMoleculePositions(knownMoleculeCount, selectedReaction.knownReactant.color, waterLevel);
-  }, [knownMoleculeCount, selectedReaction, waterLevel]);
+  // Generate both molecule sets together so they don't overlap each other (iOS grid collision avoidance)
+  const { knownMolecules, unknownMolecules } = useMemo(() => {
+    if (!selectedReaction) return { knownMolecules: [] as MoleculeDot[], unknownMolecules: [] as MoleculeDot[] };
+    const known = generateMoleculePositions(knownMoleculeCount, selectedReaction.knownReactant.color, waterLevel);
+    const unknown = generateMoleculePositions(unknownMoleculeCount, selectedReaction.unknownReactant.color, waterLevel, known);
+    return { knownMolecules: known, unknownMolecules: unknown };
+  }, [knownMoleculeCount, unknownMoleculeCount, selectedReaction, waterLevel]);
 
-  const unknownMolecules = useMemo(() => {
+  /**
+   * iOS FractionedCoordinates: during reaction phases, reactant dots progressively
+   * disappear while product dots progressively appear. Uses reactionProgress to
+   * compute fraction of each type to show. Product positions are generated once
+   * when the reaction starts and stored in productMolecules state.
+   */
+  const reactionMolecules = useMemo(() => {
     if (!selectedReaction) return [];
-    return generateMoleculePositions(unknownMoleculeCount, selectedReaction.unknownReactant.color, waterLevel);
-  }, [unknownMoleculeCount, selectedReaction, waterLevel]);
+    const p = Math.min(1, Math.max(0, reactionProgress));
+
+    // Not in a reaction phase — return static reactant dots
+    const reactionPhases: Phase[] = ['reaction1', 'endReaction1', 'reaction2', 'endReaction2', 'weighProduct', 'postWeighing', 'revealMetal', 'addExtraUnknown', 'complete'];
+    if (!reactionPhases.includes(phase) || p === 0) {
+      return [...knownMolecules, ...unknownMolecules];
+    }
+
+    // Fraction of reactants consumed & products formed (same logic as chart)
+    const knownVisible = Math.max(0, Math.round(knownMoleculeCount * (1 - p)));
+    const unknownVisible = Math.max(0, Math.round(unknownMoleculeCount * (1 - p)));
+    const productCount = Math.round(
+      Math.min(knownMoleculeCount, unknownMoleculeCount) * p,
+    );
+
+    // Slice arrays: show first N dots from each (iOS prefix behavior)
+    const visibleKnown = knownMolecules.slice(0, knownVisible);
+    const visibleUnknown = unknownMolecules.slice(0, unknownVisible);
+    const visibleProduct = productMolecules.slice(0, productCount);
+
+    return [...visibleKnown, ...visibleUnknown, ...visibleProduct];
+  }, [selectedReaction, reactionProgress, phase, knownMoleculeCount, unknownMoleculeCount, knownMolecules, unknownMolecules, productMolecules]);
 
   const selectReaction = useCallback((reaction: PrecipitationReactionDef) => {
     setSelectedReaction(reaction);
@@ -191,6 +331,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     setEquationState('blank');
     setMetalRevealed(false);
     setBeakerView('microscopic');
+    setProductMolecules([]);
     // In explore mode skip educational intro
     setPhase(exploreMode ? 'setWaterLevel' : 'explainPrecipitation');
     tagAction('selectReaction', 'precipitation', { reactionId: reaction.id });
@@ -315,12 +456,17 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         case 'addUnknown':
           // Trigger reaction when both reactants present
           if (knownMoleculeCount > 0 && unknownMoleculeCount > 0) {
+            // Generate product positions for microscopic view
+            if (selectedReaction) {
+              const allReactants = [...knownMolecules, ...unknownMolecules];
+              const maxProduct = Math.min(knownMoleculeCount, unknownMoleculeCount);
+              const prods = generateMoleculePositions(maxProduct, selectedReaction.product.color, waterLevel, allReactants);
+              setProductMolecules(prods);
+            }
             setEquationState('showMolarity');
             setBeakerView('macroscopic');
             setPhase('reaction1');
-            setReactionProgress(0);
-            setTimeout(() => setReactionProgress(0.5), 100);
-            setTimeout(() => setPhase('weighProduct'), 1500);
+            animateReaction(0, 0.5, 3000, () => setPhase('weighProduct'));
           }
           break;
         case 'weighProduct':
@@ -367,15 +513,17 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         break;
       case 'addUnknown':
         if (unknownMoleculeCount >= MIN_MOLECULES) {
+          // Generate product molecule positions on the grid, avoiding existing reactant positions
+          if (selectedReaction) {
+            const allReactants = [...knownMolecules, ...unknownMolecules];
+            const maxProduct = Math.min(knownMoleculeCount, unknownMoleculeCount);
+            const prods = generateMoleculePositions(maxProduct, selectedReaction.product.color, waterLevel, allReactants);
+            setProductMolecules(prods);
+          }
           setPhase('reaction1');
-          setReactionProgress(0);
           tagAction('startReaction', 'precipitation', { reaction: 1, unknownMoleculeCount });
-          setTimeout(() => {
-            setReactionProgress(0.5);
-          }, 100);
-          setTimeout(() => {
-            setPhase('endReaction1');
-          }, 1500);
+          // iOS: 3s linear animation, reactionProgress 0 → 0.5
+          animateReaction(0, 0.5, 3000, () => setPhase('endReaction1'));
         }
         break;
 
@@ -402,19 +550,24 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
 
       case 'revealMetal':
         setMetalRevealed(true);
+        // iOS: precipitate returns to beaker for second reaction
+        setPrecipitatePosition('beaker');
+        setBeakerView('macroscopic');
         setPhase('addExtraUnknown');
         tagAction('revealMetal', 'precipitation', { metal: currentMetal });
         break;
       case 'addExtraUnknown':
+        // Regenerate product positions with the full amount for reaction2
+        if (selectedReaction) {
+          const allReactants = [...knownMolecules, ...unknownMolecules];
+          const maxProduct = Math.min(knownMoleculeCount, unknownMoleculeCount);
+          const prods = generateMoleculePositions(maxProduct, selectedReaction.product.color, waterLevel, allReactants);
+          setProductMolecules(prods);
+        }
         setPhase('reaction2');
-        setReactionProgress(0.5);
         tagAction('startReaction', 'precipitation', { reaction: 2 });
-        setTimeout(() => {
-          setReactionProgress(1.0);
-        }, 100);
-        setTimeout(() => {
-          setPhase('endReaction2');
-        }, 1500);
+        // iOS: 3s linear animation, reactionProgress 0.5 → 1.0
+        animateReaction(0.5, 1.0, 3000, () => setPhase('endReaction2'));
         break;
 
       // Post reaction2
@@ -430,7 +583,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       default:
         break;
     }
-  }, [phase, knownMoleculeCount, unknownMoleculeCount, precipitatePosition, exploreMode, currentMetal, selectedReaction, waterLevel]);
+  }, [phase, knownMoleculeCount, unknownMoleculeCount, precipitatePosition, exploreMode, currentMetal, selectedReaction, waterLevel, animateReaction, knownMolecules, unknownMolecules]);
 
   const back = useCallback(() => {
     tagAction('back', 'precipitation', { fromPhase: phase });
@@ -474,6 +627,30 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     }
   }, [phase, exploreMode]);
 
+  // iOS "Run again?" button — shown after reactions complete (endReaction1, endReaction2)
+  const showRunAgain = phase === 'endReaction1' || phase === 'endReaction2';
+
+  // iOS HighlightedElements — computed from current phase (explore mode: no highlighting)
+  const highlights = useMemo(() => {
+    if (exploreMode) return [] as HighlightElement[];
+    return getHighlightsForPhase(phase);
+  }, [phase, exploreMode]);
+
+  const runReactionAgain = useCallback(() => {
+    if (!showRunAgain) return;
+    // iOS: back() → RunReaction.reapply() → resetReaction() then doApply()
+    // Resets progress to startOfReaction, then re-animates over 3s linear
+    if (phase === 'endReaction1') {
+      setPhase('reaction1');
+      tagAction('runReactionAgain', 'precipitation', { reaction: 1 });
+      animateReaction(0, 0.5, 3000, () => setPhase('endReaction1'));
+    } else if (phase === 'endReaction2') {
+      setPhase('reaction2');
+      tagAction('runReactionAgain', 'precipitation', { reaction: 2 });
+      animateReaction(0.5, 1.0, 3000, () => setPhase('endReaction2'));
+    }
+  }, [phase, showRunAgain, animateReaction]);
+
   return {
     reactions: precipitationReactions,
     selectedReaction,
@@ -489,9 +666,12 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     metalRevealed,
     phase,
     isDropTarget,
+    showRunAgain,
+    highlights,
 
     knownMolecules,
     unknownMolecules,
+    reactionMolecules,
 
     unknownReactantMolarMass,
     knownReactantMolarity,
@@ -508,6 +688,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     dragPrecipitate,
     setDropTarget: setDropTargetState,
     weighProduct: weighProductAction,
+    runReactionAgain,
     next,
     back,
     canGoNext,

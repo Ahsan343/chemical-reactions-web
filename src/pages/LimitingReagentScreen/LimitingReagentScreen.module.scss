@@ -57,12 +57,14 @@
   min-height: 0;
 }
 
-/* Left side: bottles stacked above beaker */
+/* Left side: bottles stacked above beaker.
+   overflow: visible so falling particles from bottles can cross into beaker area. */
 .beakerColumn {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  overflow: visible;
 }
 
 .containersRow {
@@ -70,6 +72,10 @@
   align-items: flex-end;
   justify-content: center;
   gap: 16px;
+  overflow: visible;
+  /* z-index so falling particles paint OVER the beaker area below */
+  position: relative;
+  z-index: 2;
 }
 
 .beakerArea {

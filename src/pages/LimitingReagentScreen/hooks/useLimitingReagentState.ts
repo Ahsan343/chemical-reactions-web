@@ -59,7 +59,8 @@ const COMPLETED_EXPERIMENTS_KEY = 'limitingReagentCompleted';
 const MIN_LIMITING_MOLECULES = 12;
 const MAX_LIMITING_MOLECULES = 30;
 const MIN_EXTRA_EXCESS = 5;
-const GRID_COLS = 8;
+// iOS MoleculeGridSettings: 19 columns × 10 rows
+const GRID_COLS = 19;
 const GRID_ROWS = 10;
 const REACTION_DURATION_MS = 2000;
 const REACTION_TICK_MS = 50;
@@ -135,31 +136,17 @@ function generateRandomPositions(
 }
 
 export function useLimitingReagentState(exploreMode = false) {
-  const [selectedReaction, setSelectedReaction] = useState<LimitingReagentReactionDef | null>(() => {
-    const stored = loadFromStorage<StoredState>(STORAGE_KEY);
-    if (stored) {
-      return limitingReagentReactions.find((r) => r.id === stored.reactionId) ?? null;
-    }
-    return null;
-  });
-
-  const [waterLevel, setWaterLevel] = useState(() => {
-    const stored = loadFromStorage<StoredState>(STORAGE_KEY);
-    return stored?.waterLevel ?? 0.5;
-  });
-
-  const [moleculeCounts, setMoleculeCounts] = useState<MoleculeCounts>(() => {
-    const stored = loadFromStorage<StoredState>(STORAGE_KEY);
-    return stored?.moleculeCounts ?? { limiting: 0, excess: 0, product: 0 };
-  });
-
+  // Always start fresh — molecule dots aren't persisted so restoring
+  // mid-experiment state produces a broken view (counts & equations filled
+  // but no dots in the beaker). This matches iOS behaviour where the
+  // screen begins from scratch each time.
+  const [selectedReaction, setSelectedReaction] = useState<LimitingReagentReactionDef | null>(null);
+  const [waterLevel, setWaterLevel] = useState(0.5);
+  const [moleculeCounts, setMoleculeCounts] = useState<MoleculeCounts>({ limiting: 0, excess: 0, product: 0 });
   const [equationState, setEquationState] = useState<EquationState>('blank');
   const [reactionProgress, setReactionProgress] = useState(0);
   const [isReacting, setIsReacting] = useState(false);
-  const [inputPhase, setInputPhase] = useState<InputPhase>(() => {
-    const stored = loadFromStorage<StoredState>(STORAGE_KEY);
-    return stored?.inputPhase ?? 'selectReaction';
-  });
+  const [inputPhase, setInputPhase] = useState<InputPhase>('selectReaction');
 
   const [limitingDots, setLimitingDots] = useState<MoleculeDot[]>([]);
   const [excessDots, setExcessDots] = useState<MoleculeDot[]>([]);

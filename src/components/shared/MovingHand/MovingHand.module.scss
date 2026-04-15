@@ -1,0 +1,47 @@
+/* iOS MovingHand.swift parity:
+   0.25s wait at start → 1s linear move → 0.25s wait at end → repeat forever.
+   Total cycle: 1.5s */
+
+.movingHand {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 100;
+  animation: handCycle 1.5s linear infinite;
+}
+
+.handImage {
+  width: 60px;
+  height: auto;
+  transform: translate(-30%, -15%); /* offset so fingertip aligns with element center */
+  opacity: 0.85;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* iOS animation phases:
+   0% - 16.7% (0.25s): wait at start
+   16.7% - 83.3% (1s): linear move to end
+   83.3% - 100% (0.25s): wait at end */
+@keyframes handCycle {
+  0% {
+    transform: translate(var(--hand-start-x), var(--hand-start-y));
+  }
+  16.67% {
+    transform: translate(var(--hand-start-x), var(--hand-start-y));
+  }
+  83.33% {
+    transform: translate(
+      calc(var(--hand-start-x) + var(--hand-dx)),
+      calc(var(--hand-start-y) + var(--hand-dy))
+    );
+  }
+  100% {
+    transform: translate(
+      calc(var(--hand-start-x) + var(--hand-dx)),
+      calc(var(--hand-start-y) + var(--hand-dy))
+    );
+  }
+}

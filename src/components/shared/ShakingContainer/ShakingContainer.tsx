@@ -8,6 +8,8 @@ interface ShakingContainerProps {
   disabled?: boolean;
   isActive?: boolean;
   tooltipText?: string;
+  /** CSS-variable-driven distance the particles travel (e.g. "320px"). Defaults to 110px. */
+  fallDistance?: string;
 }
 
 interface FallingParticle {
@@ -56,39 +58,46 @@ export default function ShakingContainer({
   disabled = false,
   isActive = false,
   tooltipText,
+  fallDistance,
 }: ShakingContainerProps) {
   const [pourKey, setPourKey] = useState(0);
   const [pouring, setPouring] = useState(false);
   const pourTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const containerW = 50;
+  const containerW = 40;
   const containerH = containerW * 2.33;
 
   const svgPath = useMemo(() => containerShapePath(containerW, containerH), [containerW, containerH]);
 
   const particles = useMemo<FallingParticle[]>(() => {
     if (!pouring) return [];
-    return Array.from({ length: 8 }, (_, i) => ({
+    // iOS MoleculeEmitter: 5 molecules, staggered — 2× speed
+    return Array.from({ length: 5 }, (_, i) => ({
       id: `${pourKey}-${i}`,
-      x: Math.random() * 20 - 10,
-      delay: i * 0.05,
+      x: Math.random() * 16 - 8,
+      delay: i * 0.04,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pouring, pourKey]);
 
+  const pourCallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     return () => {
       if (pourTimerRef.current) clearTimeout(pourTimerRef.current);
+      if (pourCallbackRef.current) clearTimeout(pourCallbackRef.current);
     };
   }, []);
 
   const handleClick = useCallback(() => {
     if (disabled) return;
-    onPour();
+    // Delay molecule appearance until particles reach the water surface
+    if (pourCallbackRef.current) clearTimeout(pourCallbackRef.current);
+    pourCallbackRef.current = setTimeout(() => onPour(), 420);
     setPourKey((k) => k + 1);
     setPouring(true);
     if (pourTimerRef.current) clearTimeout(pourTimerRef.current);
-    pourTimerRef.current = setTimeout(() => setPouring(false), 700);
+    pourTimerRef.current = setTimeout(() => setPouring(false), 600);
   }, [disabled, onPour]);
 
   const labelH = LABEL_HEIGHT_RATIO * containerH;
@@ -105,7 +114,10 @@ export default function ShakingContainer({
   return (
     <div className={styles.wrapper}>
       {/* Particles layer — sits OUTSIDE the rotating container so they always fall straight down */}
-      <div className={styles.particlesContainer}>
+      <div
+        className={styles.particlesContainer}
+        style={{ '--fall-distance': fallDistance ?? '110px' } as React.CSSProperties}
+      >
         {particles.map((p) => (
           <div
             key={p.id}
