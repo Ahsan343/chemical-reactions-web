@@ -713,6 +713,11 @@ export default function PrecipitationScreen() {
                       ? handlePointerUp
                       : undefined
                   }
+                  onPointerCancel={
+                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
+                      ? handlePointerUp
+                      : undefined
+                  }
                 >
                   <PrecipitateShape
                     progress={state.reactionProgress}

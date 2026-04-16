@@ -126,6 +126,7 @@
 .precipitateDraggable {
   pointer-events: auto;
   cursor: grab;
+  touch-action: none;
   /* Override transition when dragging — drag follows pointer immediately */
   transition: none;
 
