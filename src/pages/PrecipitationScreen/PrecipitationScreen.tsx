@@ -469,7 +469,6 @@ export default function PrecipitationScreen() {
         : replaceMetalInFormula(state.selectedReaction!.unknownReactant.formulaTemplate, Metal.Sodium).replace(/Na|Li|K/g, 'M'))
     : '';
 
-  // Measure bottle→beaker fall distance for pour animation
   const containersRowRef = useRef<HTMLDivElement>(null);
   const beakerWrapperRef = useRef<HTMLDivElement>(null);
   const [fallDistance, setFallDistance] = useState('140px');
@@ -480,14 +479,15 @@ export default function PrecipitationScreen() {
       const bEl = beakerWrapperRef.current;
       if (cEl && bEl) {
         const cRect = cEl.getBoundingClientRect();
+        const s = canvasScale > 0 ? canvasScale : 1;
         const waterSurface = bEl.querySelector('[data-water-surface]');
         if (waterSurface) {
           const wsRect = waterSurface.getBoundingClientRect();
-          const dist = wsRect.top - cRect.bottom;
+          const dist = (wsRect.top - cRect.bottom) / s;
           setFallDistance(`${Math.max(40, Math.round(dist))}px`);
         } else {
           const bRect = bEl.getBoundingClientRect();
-          const dist = bRect.top + bRect.height * 0.4 - cRect.bottom;
+          const dist = (bRect.top + bRect.height * 0.4 - cRect.bottom) / s;
           setFallDistance(`${Math.max(40, Math.round(dist))}px`);
         }
       }
@@ -498,7 +498,7 @@ export default function PrecipitationScreen() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', measure);
     };
-  }, [hasReaction, state.waterLevel]);
+  }, [hasReaction, state.waterLevel, canvasScale]);
 
   // Precipitate position: measures beaker water center and scales center
   // relative to beakerScalesRow, and transitions smoothly between them (iOS: easeOut 0.25s)

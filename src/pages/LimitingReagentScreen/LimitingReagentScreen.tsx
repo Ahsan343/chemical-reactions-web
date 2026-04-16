@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 
+import { useCanvasScale } from '../../layout/ResponsiveLayout';
 import { useLimitingReagentState } from './hooks/useLimitingReagentState';
 
 import { FillableBeaker } from '../../components/shared/Beaker/FillableBeaker';
@@ -427,6 +428,8 @@ export default function LimitingReagentScreen() {
     return s;
   }, [activeHighlights]);
 
+  const canvasScale = useCanvasScale();
+
   // Measure bottle→beaker fall distance for pour animation (iOS: 200pt/s linear drop)
   const containersRef = useRef<HTMLDivElement>(null);
   const beakerRef = useRef<HTMLDivElement>(null);
@@ -438,16 +441,17 @@ export default function LimitingReagentScreen() {
       const bEl = beakerRef.current;
       if (cEl && bEl) {
         const cRect = cEl.getBoundingClientRect();
+        const s = canvasScale > 0 ? canvasScale : 1;
         // Find the water surface marker inside the beaker area
         const waterSurface = bEl.querySelector('[data-water-surface]');
         if (waterSurface) {
           const wsRect = waterSurface.getBoundingClientRect();
-          const dist = wsRect.top - cRect.bottom;
+          const dist = (wsRect.top - cRect.bottom) / s;
           setFallDistance(`${Math.max(40, Math.round(dist))}px`);
         } else {
           // Fallback: 40% into beaker
           const bRect = bEl.getBoundingClientRect();
-          const dist = bRect.top + bRect.height * 0.4 - cRect.bottom;
+          const dist = (bRect.top + bRect.height * 0.4 - cRect.bottom) / s;
           setFallDistance(`${Math.max(40, Math.round(dist))}px`);
         }
       }
@@ -459,7 +463,7 @@ export default function LimitingReagentScreen() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', measure);
     };
-  }, [hasReaction, state.waterLevel]);
+  }, [hasReaction, state.waterLevel, canvasScale]);
 
   return (
     <div className={styles.screen}>
