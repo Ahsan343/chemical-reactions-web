@@ -120,6 +120,7 @@
   pointer-events: none;
   /* Positioned dynamically near the slider thumb — for now, below the beaker */
   bottom: -20px;
+  margin-bottom: 4px;
 }
 
 /* Blueprint: "(X.XX g) added" persistent label above shaker area */
@@ -197,7 +198,7 @@
 
 .toggleArea {
   flex-shrink: 0;
-  padding: 2px 0;
+  padding: 8px 0 2px;
 }
 
 /* Middle column: table + chart */
