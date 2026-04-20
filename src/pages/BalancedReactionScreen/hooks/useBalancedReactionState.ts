@@ -4,7 +4,7 @@ import { ReactionBalancer } from '../../../helper/chemistry/reactionBalancer';
 import { balancedReactions } from '../../../constants/reactions/balancedReactions';
 import { tagAction } from '../../../helper/actionLogger';
 import { setScreenCompleted } from '../../../helper/persistence/storage';
-import { atomInfoMap } from '../../../helper/chemistry/atoms';
+
 
 type Phase =
   | 'selectReaction'
@@ -282,38 +282,21 @@ export function useBalancedReactionState(exploreMode = false): BalancedReactionS
           ? ElementType.Reactant
           : ElementType.Product);
 
-      // Format molecule display
       const moleculePlural = coefficient === 1 ? 'molecule' : 'molecules';
-      const moleculeDisplay = `${coefficient} ${moleculePlural} of ${lastAdjustedMolecule.formula}`;
 
-      // Format atom displays
-      const atomDisplays: string[] = [];
-      for (const atomCount of lastAdjustedMolecule.atoms) {
-        const effectiveCount = atomCount.count * coefficient;
-        const atomInfo = atomInfoMap[atomCount.atom];
-        const atomPlural = effectiveCount === 1 ? 'atom' : 'atoms';
-        atomDisplays.push(
-          `${effectiveCount} ${atomPlural} of ${atomInfo.name} (${atomInfo.symbol})`
-        );
-      }
-
-      // Combine all display components (molecule + atoms) with commas and final "and"
-      const allDisplays = [moleculeDisplay, ...atomDisplays];
-      let combinedText = '';
-      if (allDisplays.length === 1) {
-        combinedText = allDisplays[0];
-      } else if (allDisplays.length === 2) {
-        combinedText = `${allDisplays[0]} and ${allDisplays[1]}`;
+      if (coefficient === 1) {
+        // First molecule added
+        return [
+          { text: `Equation is unbalanced now! You added 1 molecule of ${lastAdjustedMolecule.formula}. The Stoichiometric Coefficient for it now is 1 then. ` },
+          { text: 'Drag the molecules to the corresponding side. You can remove the molecule by tapping it.', bold: true },
+        ];
       } else {
-        combinedText = allDisplays.slice(0, -1).join(', ') + ' and ' + allDisplays[allDisplays.length - 1];
+        // Subsequent molecules
+        return [
+          { text: `Equation is unbalanced now! You added ${coefficient} ${moleculePlural} of ${lastAdjustedMolecule.formula}. The Stoichiometric Coefficient for it now is ${coefficient} then. ` },
+          { text: 'Keep dragging the molecules to balance the equation. You can remove the molecule by tapping it.', bold: true },
+        ];
       }
-
-      const areOrIs = coefficient === 1 ? 'is' : 'are';
-
-      return [
-        { text: `Equation is unbalanced. The stoichiometric coefficient for ${lastAdjustedMolecule.formula} is ${coefficient}, which means there ${areOrIs} ${combinedText}. ` },
-        { text: 'Keep dragging the molecules to balance the reaction.', bold: true },
-      ];
     }
 
     return null;

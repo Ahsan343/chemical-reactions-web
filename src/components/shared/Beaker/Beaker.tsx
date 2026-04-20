@@ -269,15 +269,22 @@ export function Beaker({
             <path d={mediumPath} fill="white" />
             <path d={smallPath} fill="black" />
           </mask>
+
+          {/* Cross-hatch dot pattern for liquid — matches iOS blueprint style */}
+          <pattern id={`${clipId}-dots`} x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
+            <rect width="12" height="12" fill={liquidColor} />
+            <circle cx="3" cy="3" r="1.8" fill="rgba(255, 255, 255, 0.35)" />
+            <circle cx="9" cy="9" r="1.8" fill="rgba(255, 255, 255, 0.35)" />
+          </pattern>
         </defs>
 
-        {/* Layer 1: Liquid fill */}
+        {/* Layer 1: Liquid fill with dot pattern */}
         <rect
           x={0}
           y={liquidTop}
           width={width}
           height={resolvedHeight - liquidTop}
-          fill={liquidColor}
+          fill={`url(#${clipId}-dots)`}
           clipPath={`url(#${clipId}-liquid)`}
           className={styles.liquidFill}
         />

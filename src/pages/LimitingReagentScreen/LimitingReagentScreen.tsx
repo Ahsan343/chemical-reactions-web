@@ -270,7 +270,8 @@ export default function LimitingReagentScreen() {
           { text: ' to be produced. Using the Molar Mass of ' },
           { text: r?.product.formula ?? '', bold: true, color: r?.product.color },
           { text: ' we can know really how many grams of it is being produced. Let\'s call that the ' },
-          { text: `actual ${r?.product.formula ?? ''}`, bold: true, color: r?.product.color },
+          { text: `actual ${r?.product.formula ?? ''}\n`, bold: true, color: r?.product.color },
+          { text: 'Keep shaking.', bold: true, color: 'rgb(220, 84, 59)' },
         ];
 
       // --- Post-reaction narrative (iOS steps 17-19) ---
@@ -319,7 +320,7 @@ export default function LimitingReagentScreen() {
         return [
           { text: 'Wow! ' },
           { text: r?.excessReactant.formula ?? '', bold: true, color: r?.excessReactant.color },
-          { text: ' is accumulating, but the reaction is not taking place. ' },
+          { text: ' is accumulating. But the reaction is not taking place. ' },
           { text: 'Why is this?', bold: true, color: 'rgb(220, 84, 59)' },
         ];
       case 'explainLimitingReagent':

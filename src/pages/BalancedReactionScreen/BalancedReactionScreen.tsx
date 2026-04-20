@@ -34,11 +34,12 @@ export default function BalancedReactionScreen() {
   const [activeDragMolecule, setActiveDragMolecule] = useState<Molecule | null>(null);
 
   const dropdownOptions = state.reactions.map((r) => {
+    // Show UNBALANCED equations in dropdown (no coefficients) — student must balance them
     const reactantStr = r.reactants
-      .map((e) => (e.coefficient > 1 ? `${e.coefficient}` : '') + e.molecule.formula)
+      .map((e) => e.molecule.formula)
       .join(' + ');
     const productStr = r.products
-      .map((e) => (e.coefficient > 1 ? `${e.coefficient}` : '') + e.molecule.formula)
+      .map((e) => e.molecule.formula)
       .join(' + ');
     return {
       id: r.id,
@@ -199,18 +200,18 @@ export default function BalancedReactionScreen() {
       case 'selectReaction':
         return [
           { text: 'Chemical reactions are represented as an equation. ' },
-          { text: 'Choose a reaction and then let\'s find out more about that!', bold: true },
+          { text: 'Let\'s find out more about that, choose a reaction first.', bold: true },
         ];
 
       // Educational intro (iOS steps 2-5)
       case 'introFormulas':
         return [
-          { text: 'A reaction is separated in two parts: the left part where the ' },
+          { text: 'A reaction is separated in two parts: left part where the ' },
           { text: 'reactants', bold: true },
-          { text: ' are, and the right part where the ' },
+          { text: ' are and right part where the ' },
           { text: 'products', bold: true },
           { text: ' are. The compounds are represented as ' },
-          { text: 'empirical formulas', bold: true },
+          { text: 'Empirical Formulas', bold: true },
           { text: ', which indicates the atoms ratio within the molecule.' },
         ];
       case 'introFormulaExample': {
@@ -246,9 +247,9 @@ export default function BalancedReactionScreen() {
       }
       case 'introCoefficients':
         return [
-          { text: 'But this is not the only numbers that are involved in the equation. ' },
-          { text: 'Stoichiometric coefficients', bold: true },
-          { text: ' are values that are written on the left of the compound to determine how many molecules there are.' },
+          { text: 'But this is not the only number that are involved in the equation. ' },
+          { text: 'Stoichiometric Coefficients', bold: true },
+          { text: ' are values that are written on the left of the compound to determine how many molecules of it there is.' },
         ];
       case 'introBalanced':
         return [
@@ -289,14 +290,14 @@ export default function BalancedReactionScreen() {
         const isLastReaction = state.completedCount >= state.reactions.length;
         if (isLastReaction) {
           return [
-            { text: 'The equation is balanced!', bold: true },
-            { text: ' This is what the real equation for this reaction looks like. There are the same number of atoms on both sides of the equation. ' },
-            { text: 'Perfect! Now you know how to balance equations.', bold: true },
+            { text: 'Equation is balanced!', bold: true },
+            { text: ' This is how the real equation for this reaction looks like. There are the same amount of atoms on both sides of the equation. ' },
+            { text: 'Perfect! Now you know balancing equations.', bold: true },
           ];
         } else {
           return [
-            { text: 'The equation is balanced!', bold: true },
-            { text: ' This is what the real equation for this reaction looks like. There are the same number of atoms on both sides of the equation. ' },
+            { text: 'Equation is balanced!', bold: true },
+            { text: ' This is how the real equation for this reaction looks like. There are the same amount of atoms on both sides of the equation. ' },
             { text: 'Choose another one.', bold: true },
           ];
         }
@@ -335,7 +336,7 @@ export default function BalancedReactionScreen() {
               selectedId={state.selectedReaction?.id ?? null}
               onChange={handleSelectReaction}
               disabled={exploreMode ? false : (state.phase !== 'selectReaction' && state.phase !== 'balanced')}
-              placeholder="Choose a reaction"
+              placeholder="Choose a Compound"
             />
           </div>
         </div>
@@ -362,32 +363,38 @@ export default function BalancedReactionScreen() {
 
               <HighlightOverlay highlighted={dragEnabled && !state.isBalanced}>
                 <div className={styles.beakerRow}>
-                  <DragZone
-                    id="reactant-beaker"
-                    elementType="reactant"
-                    highlightState={reactantHighlight}
-                    width={220}
-                    height={260}
-                    droppedEntries={reactantDropped}
-                    onRemoveMolecule={dragEnabled ? state.removeMoleculeFromBeaker : undefined}
-                  />
+                  <div className={styles.beakerColumn}>
+                    <span className={styles.beakerLabel}>Reactants</span>
+                    <DragZone
+                      id="reactant-beaker"
+                      elementType="reactant"
+                      highlightState={reactantHighlight}
+                      width={220}
+                      height={260}
+                      droppedEntries={reactantDropped}
+                      onRemoveMolecule={dragEnabled ? state.removeMoleculeFromBeaker : undefined}
+                    />
+                  </div>
 
                   <div className={styles.reactionArrow}>
                     <svg width="48" height="28" viewBox="0 0 48 28">
-                      <line x1="2" y1="14" x2="36" y2="14" stroke="rgb(200, 50, 50)" strokeWidth="5" strokeLinecap="round" />
-                      <polyline points="30,5 44,14 30,23" fill="none" stroke="rgb(200, 50, 50)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="2" y1="14" x2="36" y2="14" stroke="rgb(220, 84, 59)" strokeWidth="5" strokeLinecap="round" />
+                      <polyline points="30,5 44,14 30,23" fill="none" stroke="rgb(220, 84, 59)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
 
-                  <DragZone
-                    id="product-beaker"
-                    elementType="product"
-                    highlightState={productHighlight}
-                    width={220}
-                    height={260}
-                    droppedEntries={productDropped}
-                    onRemoveMolecule={dragEnabled ? state.removeMoleculeFromBeaker : undefined}
-                  />
+                  <div className={styles.beakerColumn}>
+                    <span className={styles.beakerLabel}>Products</span>
+                    <DragZone
+                      id="product-beaker"
+                      elementType="product"
+                      highlightState={productHighlight}
+                      width={220}
+                      height={260}
+                      droppedEntries={productDropped}
+                      onRemoveMolecule={dragEnabled ? state.removeMoleculeFromBeaker : undefined}
+                    />
+                  </div>
                 </div>
               </HighlightOverlay>
             </div>

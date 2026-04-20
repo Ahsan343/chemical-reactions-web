@@ -372,33 +372,65 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
 
   /**
    * iOS FractionedCoordinates: during reaction phases, reactant dots progressively
-   * disappear while product dots progressively appear. Uses reactionProgress to
-   * compute fraction of each type to show. Product positions are generated once
-   * when the reaction starts and stored in productMolecules state.
+   * disappear while product dots progressively appear.
+   *
+   * Real-time reaction during pouring: during addUnknown / addExtraUnknown, product
+   * molecules appear immediately as unknowns are added (stoichiometric visibility).
+   * During reaction1/reaction2 animation phases (e.g. "Run Again"), a progress-based
+   * interpolation smoothly animates from all-reactants → stoichiometric result.
    */
   const reactionMolecules = useMemo(() => {
     if (!selectedReaction) return [];
-    const p = Math.min(1, Math.max(0, reactionProgress));
 
-    // Not in a reaction phase — return static reactant dots
-    const reactionPhases: Phase[] = ['reaction1', 'endReaction1', 'reaction2', 'endReaction2', 'postWeighing', 'revealMetal', 'addExtraUnknown', 'complete'];
-    if (!reactionPhases.includes(phase) || p === 0) {
-      return [...knownMolecules, ...unknownMolecules];
+    // --- Stoichiometric helper: computes the physically-correct molecule split ---
+    const stoichiometric = () => {
+      const productsFormed = Math.min(knownMoleculeCount, unknownMoleculeCount);
+      const knownRemaining = knownMoleculeCount - productsFormed;
+      const unknownExcess = Math.max(0, unknownMoleculeCount - knownMoleculeCount);
+
+      const visibleKnown = knownMolecules.slice(0, knownRemaining);
+      // Show excess unknowns from the end of the array (first ones added reacted first)
+      const visibleUnknown = unknownExcess > 0
+        ? unknownMolecules.slice(unknownMoleculeCount - unknownExcess)
+        : [];
+      const visibleProducts = productMolecules.slice(0, productsFormed);
+
+      return [...visibleKnown, ...visibleUnknown, ...visibleProducts];
+    };
+
+    // Real-time reaction during pouring — products appear as unknowns are added
+    if ((phase === 'addUnknown' || phase === 'addExtraUnknown') && productMolecules.length > 0) {
+      return stoichiometric();
     }
 
-    // Fraction of reactants consumed & products formed (same logic as chart)
-    const knownVisible = Math.max(0, Math.round(knownMoleculeCount * (1 - p)));
-    const unknownVisible = Math.max(0, Math.round(unknownMoleculeCount * (1 - p)));
-    const productCount = Math.round(
-      Math.min(knownMoleculeCount, unknownMoleculeCount) * p,
-    );
+    // Post-reaction phases: show stoichiometric result (no animation)
+    const postReactionPhases: Phase[] = [
+      'endReaction1', 'endReaction2', 'postWeighing', 'revealMetal', 'complete',
+    ];
+    if (postReactionPhases.includes(phase) && productMolecules.length > 0) {
+      return stoichiometric();
+    }
 
-    // Slice arrays: show first N dots from each (iOS prefix behavior)
-    const visibleKnown = knownMolecules.slice(0, knownVisible);
-    const visibleUnknown = unknownMolecules.slice(0, unknownVisible);
-    const visibleProduct = productMolecules.slice(0, productCount);
+    // Animation phases (reaction1 / reaction2): progress-based interpolation
+    // from all-reactants (p=0) → stoichiometric result (p=1)
+    if (phase === 'reaction1' || phase === 'reaction2') {
+      const p = Math.min(1, Math.max(0, reactionProgress));
+      if (p === 0) return [...knownMolecules, ...unknownMolecules];
 
-    return [...visibleKnown, ...visibleUnknown, ...visibleProduct];
+      const maxReacting = Math.min(knownMoleculeCount, unknownMoleculeCount);
+      const productsFormed = Math.round(maxReacting * p);
+      const knownRemaining = knownMoleculeCount - productsFormed;
+      const unknownRemaining = Math.max(0, unknownMoleculeCount - productsFormed);
+
+      const visibleKnown = knownMolecules.slice(0, knownRemaining);
+      const visibleUnknown = unknownMolecules.slice(0, unknownRemaining);
+      const visibleProduct = productMolecules.slice(0, productsFormed);
+
+      return [...visibleKnown, ...visibleUnknown, ...visibleProduct];
+    }
+
+    // Default: show all reactants (no reaction yet)
+    return [...knownMolecules, ...unknownMolecules];
   }, [selectedReaction, reactionProgress, phase, knownMoleculeCount, unknownMoleculeCount, knownMolecules, unknownMolecules, productMolecules]);
 
   const selectReaction = useCallback((reaction: PrecipitationReactionDef) => {
@@ -450,6 +482,13 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         tagAction('addKnownReactant', 'precipitation', { count, explore: true });
       } else if (type === 'unknown') {
         setUnknownMoleculeCount((prev) => Math.min(prev + count, cap));
+        // Pre-generate product positions for real-time stoichiometric view
+        if (selectedReaction && productMolecules.length === 0 && knownMoleculeCount > 0) {
+          const prods = generateMoleculePositions(
+            knownMoleculeCount, selectedReaction.product.color, waterLevel, knownMolecules,
+          );
+          setProductMolecules(prods);
+        }
         tagAction('addUnknownReactant', 'precipitation', { count, explore: true });
       }
       return;
@@ -467,7 +506,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       setUnknownMoleculeCount((prev) => Math.min(prev + count, cap));
       tagAction('addUnknownReactant', 'precipitation', { count });
     }
-  }, [phase, exploreMode, waterLevel]);
+  }, [phase, exploreMode, waterLevel, selectedReaction, productMolecules, knownMoleculeCount, knownMolecules]);
 
   const canGoNext = useMemo(() => {
     if (exploreMode) {
@@ -533,20 +572,17 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         case 'addUnknown':
           // Trigger reaction when both reactants present
           if (knownMoleculeCount > 0 && unknownMoleculeCount > 0) {
-            // Generate product positions for microscopic view
-            if (selectedReaction) {
-              const allReactants = [...knownMolecules, ...unknownMolecules];
-              const maxProduct = Math.min(knownMoleculeCount, unknownMoleculeCount);
-              const prods = generateMoleculePositions(maxProduct, selectedReaction.product.color, waterLevel, allReactants);
+            // Generate product positions if not already generated during pouring
+            if (selectedReaction && productMolecules.length === 0) {
+              const prods = generateMoleculePositions(
+                knownMoleculeCount, selectedReaction.product.color, waterLevel, knownMolecules,
+              );
               setProductMolecules(prods);
             }
-            setEquationState('showMolarity');
+            setEquationState('showAll');
             setBeakerView('macroscopic');
-            setPhase('reaction1');
-            animateReaction(0, 0.5, 3000, () => {
-              setPhase('postWeighing');
-              setEquationState('showAll');
-            });
+            setReactionProgress(0.5);
+            setPhase('postWeighing');
           }
           break;
         case 'postWeighing':
@@ -583,6 +619,14 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         break;
       case 'addKnown':
         if (knownMoleculeCount >= MIN_MOLECULES) {
+          // Pre-generate product positions for real-time reaction during pouring.
+          // Pool size = knownMoleculeCount (max possible products in 1:1 stoichiometry).
+          if (selectedReaction) {
+            const prods = generateMoleculePositions(
+              knownMoleculeCount, selectedReaction.product.color, waterLevel, knownMolecules,
+            );
+            setProductMolecules(prods);
+          }
           setPhase('addUnknown');
           setEquationState('showMolarity');
           tagAction('nextPhase', 'precipitation', { from: 'addKnown', to: 'addUnknown', knownMoleculeCount });
@@ -590,17 +634,12 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         break;
       case 'addUnknown':
         if (unknownMoleculeCount >= MIN_MOLECULES) {
-          // Generate product molecule positions on the grid, avoiding existing reactant positions
-          if (selectedReaction) {
-            const allReactants = [...knownMolecules, ...unknownMolecules];
-            const maxProduct = Math.min(knownMoleculeCount, unknownMoleculeCount);
-            const prods = generateMoleculePositions(maxProduct, selectedReaction.product.color, waterLevel, allReactants);
-            setProductMolecules(prods);
-          }
-          setPhase('reaction1');
+          // Products already formed in real-time during pouring (stoichiometric
+          // visibility in reactionMolecules memo). Transition straight to the
+          // post-reaction state — no separate animation needed.
+          setReactionProgress(0.5);
+          setPhase('endReaction1');
           tagAction('startReaction', 'precipitation', { reaction: 1, unknownMoleculeCount });
-          // iOS: 3s linear animation, reactionProgress 0 → 0.5
-          animateReaction(0, 0.5, 3000, () => setPhase('endReaction1'));
         }
         break;
 
@@ -614,28 +653,23 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
 
       // Post-reaction explanation
       case 'postWeighing':
+        // Reveal the metal identity so the table highlights the matching row
+        // and the equation/BeakyBox can reference the actual compound.
+        setMetalRevealed(true);
         setPhase('revealMetal');
         tagAction('nextPhase', 'precipitation', { from: 'postWeighing', to: 'revealMetal' });
         break;
 
       case 'revealMetal':
-        setMetalRevealed(true);
         setBeakerView('macroscopic');
         setPhase('addExtraUnknown');
         tagAction('revealMetal', 'precipitation', { metal: currentMetal });
         break;
       case 'addExtraUnknown':
-        // Regenerate product positions with the full amount for reaction2
-        if (selectedReaction) {
-          const allReactants = [...knownMolecules, ...unknownMolecules];
-          const maxProduct = Math.min(knownMoleculeCount, unknownMoleculeCount);
-          const prods = generateMoleculePositions(maxProduct, selectedReaction.product.color, waterLevel, allReactants);
-          setProductMolecules(prods);
-        }
-        setPhase('reaction2');
+        // Products already formed in real-time during pouring.
+        setReactionProgress(1.0);
+        setPhase('endReaction2');
         tagAction('startReaction', 'precipitation', { reaction: 2 });
-        // iOS: 3s linear animation, reactionProgress 0.5 → 1.0
-        animateReaction(0.5, 1.0, 3000, () => setPhase('endReaction2'));
         break;
 
       // Post reaction2
@@ -739,15 +773,17 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
   const runReactionAgain = useCallback(() => {
     if (!showRunAgain) return;
     // iOS: back() → RunReaction.reapply() → resetReaction() then doApply()
-    // Resets progress to startOfReaction, then re-animates over 3s linear
+    // Replay: animate progress from 0 (all reactants) → 1 (stoichiometric result)
+    // over 3s linear. The reaction1/reaction2 branch of reactionMolecules uses
+    // the same stoichiometric formula so no visual jump at start/end.
     if (phase === 'endReaction1') {
       setPhase('reaction1');
       tagAction('runReactionAgain', 'precipitation', { reaction: 1 });
-      animateReaction(0, 0.5, 3000, () => setPhase('endReaction1'));
+      animateReaction(0, 1.0, 3000, () => setPhase('endReaction1'));
     } else if (phase === 'endReaction2') {
       setPhase('reaction2');
       tagAction('runReactionAgain', 'precipitation', { reaction: 2 });
-      animateReaction(0.5, 1.0, 3000, () => setPhase('endReaction2'));
+      animateReaction(0, 1.0, 3000, () => setPhase('endReaction2'));
     }
   }, [phase, showRunAgain, animateReaction]);
 

@@ -19,9 +19,9 @@ export const MoleculeColors = {
 
 export const PrecipitationColors = {
   reaction1: {
-    knownReactant: 'rgb(254, 193, 113)',
-    unknownReactant: 'rgb(61, 71, 81)',
-    product: 'rgb(205, 121, 163)',
+    knownReactant: 'rgb(100, 149, 237)',
+    unknownReactant: 'rgb(220, 80, 80)',
+    product: 'rgb(210, 195, 160)',
   },
   reaction2: {
     knownReactant: 'rgb(76, 72, 67)',

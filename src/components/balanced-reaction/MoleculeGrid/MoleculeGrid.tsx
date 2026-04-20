@@ -106,36 +106,31 @@ export default function MoleculeGrid({
   return (
     <div className={styles.gridContainer}>
       <div className={styles.contentColumn}>
-        <div className={styles.section}>
-          <span className={styles.sectionLabel}>Reactants</span>
-          <div className={`${styles.row} ${isCompact ? styles.compactRow : ''}`}>
-            {reactantMolecules.map((gm, index) => (
-              <DraggableMolecule
-                key={gm.dragId}
-                gridMolecule={gm}
-                isTutorialTarget={showTutorial && isFirstMolecule && index === 0 && reactantMolecules.length > 0}
-                compact={isCompact}
-                dragEnabled={dragEnabled}
-              />
-            ))}
-          </div>
+        {/* 2×2 grid: top row = reactants, bottom row = products — matches blueprint layout */}
+        <div className={`${styles.row} ${isCompact ? styles.compactRow : ''}`}>
+          {reactantMolecules.map((gm, index) => (
+            <DraggableMolecule
+              key={gm.dragId}
+              gridMolecule={gm}
+              isTutorialTarget={showTutorial && isFirstMolecule && index === 0 && reactantMolecules.length > 0}
+              compact={isCompact}
+              dragEnabled={dragEnabled}
+            />
+          ))}
         </div>
 
         <div className={styles.divider} />
 
-        <div className={styles.section}>
-          <span className={styles.sectionLabel}>Products</span>
-          <div className={`${styles.row} ${isCompact ? styles.compactRow : ''}`}>
-            {productMolecules.map((gm, index) => (
-              <DraggableMolecule
-                key={gm.dragId}
-                gridMolecule={gm}
-                isTutorialTarget={showTutorial && reactantMolecules.length === 0 && index === 0}
-                compact={isCompact}
-                dragEnabled={dragEnabled}
-              />
-            ))}
-          </div>
+        <div className={`${styles.row} ${isCompact ? styles.compactRow : ''}`}>
+          {productMolecules.map((gm, index) => (
+            <DraggableMolecule
+              key={gm.dragId}
+              gridMolecule={gm}
+              isTutorialTarget={showTutorial && reactantMolecules.length === 0 && index === 0}
+              compact={isCompact}
+              dragEnabled={dragEnabled}
+            />
+          ))}
         </div>
       </div>
     </div>

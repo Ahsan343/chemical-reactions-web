@@ -280,9 +280,11 @@
 
 .equationPanel {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 16px 16px;
+  align-content: start;
   overflow-y: auto;
   padding: 12px 8px;
   min-height: 0;
@@ -291,13 +293,8 @@
 .equationGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-
-  &:last-child {
-    border-bottom: none;
-  }
+  gap: 4px;
+  padding: 8px 0;
 }
 
 .equationGroupTitle {
@@ -308,16 +305,27 @@
 }
 
 .equationLine {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
   color: rgb(60, 60, 60);
-  line-height: 1.8;
+  line-height: 1.7;
   white-space: nowrap;
 }
 
 .equationValue {
   color: rgb(220, 84, 59);
   font-weight: 700;
+}
+
+.dashedPlaceholder {
+  display: inline-block;
+  min-width: 36px;
+  height: 18px;
+  border: 1.5px dashed rgb(180, 180, 180);
+  border-radius: 3px;
+  text-align: center;
+  line-height: 18px;
+  vertical-align: middle;
 }
 
 .equationFraction {

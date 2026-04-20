@@ -389,8 +389,7 @@ export default function PrecipitationScreen() {
         </div>
       </div>
 
-      {hasReaction ? (
-        <div className={styles.mainContent}>
+      <div className={styles.mainContent}>
           {/* Left column */}
           <div className={styles.leftColumn}>
             {/* "(X.XX g) added" label — shown after unknown reactant has been added (blueprint slides 64-71) */}
@@ -403,8 +402,8 @@ export default function PrecipitationScreen() {
             <div className={styles.containersRow} ref={containersRowRef}>
               <div style={highlightStyle(state.highlights, 'knownReactantContainer')}>
                 <ShakingContainer
-                  color={state.selectedReaction!.knownReactant.color}
-                  label={state.selectedReaction!.knownReactant.formula}
+                  color={hasReaction ? state.selectedReaction!.knownReactant.color : '#aaa'}
+                  label={hasReaction ? state.selectedReaction!.knownReactant.formula : '—'}
                   onPour={() => state.addReactant('known', 5)}
                   disabled={!knownContainerActive}
                   isActive={knownContainerActive}
@@ -418,17 +417,19 @@ export default function PrecipitationScreen() {
               </div>
               <div style={highlightStyle(state.highlights, 'unknownReactantContainer')}>
                 <ShakingContainer
-                  color={state.selectedReaction!.unknownReactant.color}
+                  color={hasReaction ? state.selectedReaction!.unknownReactant.color : '#aaa'}
                   label={
-                    state.metalRevealed
-                      ? replaceMetalInFormula(
-                          state.selectedReaction!.unknownReactant.formulaTemplate,
-                          state.currentMetal
-                        )
-                      : replaceMetalInFormula(
-                          state.selectedReaction!.unknownReactant.formulaTemplate,
-                          Metal.Sodium
-                        ).replace(/Na|Li|K/g, 'M')
+                    hasReaction
+                      ? (state.metalRevealed
+                          ? replaceMetalInFormula(
+                              state.selectedReaction!.unknownReactant.formulaTemplate,
+                              state.currentMetal
+                            )
+                          : replaceMetalInFormula(
+                              state.selectedReaction!.unknownReactant.formulaTemplate,
+                              Metal.Sodium
+                            ).replace(/Na|Li|K/g, 'M'))
+                      : '—'
                   }
                   onPour={() => state.addReactant('unknown', 5)}
                   disabled={!unknownContainerActive}
@@ -529,14 +530,22 @@ export default function PrecipitationScreen() {
                   : {}
               }
             >
-              <MetalTable
-                reaction={state.selectedReaction!}
-                revealedMetal={state.metalRevealed ? state.currentMetal : null}
-                showHighlight={state.metalRevealed}
-              />
+              {hasReaction ? (
+                <MetalTable
+                  reaction={state.selectedReaction!}
+                  revealedMetal={state.metalRevealed ? state.currentMetal : null}
+                  showHighlight={state.metalRevealed}
+                />
+              ) : (
+                <MetalTable
+                  reaction={state.reactions[0]}
+                  revealedMetal={null}
+                  showHighlight={false}
+                />
+              )}
             </div>
 
-            {state.selectedReaction && (state.knownMoleculeCount > 0 || state.unknownMoleculeCount > 0) && (
+            {hasReaction && (state.knownMoleculeCount > 0 || state.unknownMoleculeCount > 0) ? (
               <div className={styles.chartPlaceholder}>
                 <div className={styles.chartBars}>
                   {(() => {
@@ -544,16 +553,32 @@ export default function PrecipitationScreen() {
                     const maxDots = 10;
                     const scale = maxMol > 0 ? maxDots / maxMol : 0;
                     const p = Math.min(1, Math.max(0, state.reactionProgress));
-                    // Use actual molecule counts — clamp to maxDots to prevent overflow
-                    const krDots = state.knownMoleculeCount > 0
-                      ? Math.min(maxDots, Math.max(0, Math.round(state.knownMoleculeCount * scale * (1 - p))))
-                      : 0;
-                    const urDots = state.unknownMoleculeCount > 0
-                      ? Math.min(maxDots, Math.max(0, Math.round(state.unknownMoleculeCount * scale * (1 - p))))
-                      : 0;
-                    const prDots = (state.knownMoleculeCount > 0 && state.unknownMoleculeCount > 0)
-                      ? Math.min(maxDots, Math.round(Math.min(state.knownMoleculeCount, state.unknownMoleculeCount) * scale * p))
-                      : 0;
+                    // During pouring (addUnknown/addExtraUnknown) and post-reaction phases,
+                    // use stoichiometric counts so the chart updates in real-time.
+                    const isPouring = state.phase === 'addUnknown' || state.phase === 'addExtraUnknown';
+                    const isPostReaction = ['endReaction1', 'endReaction2', 'postWeighing', 'revealMetal', 'complete'].includes(state.phase);
+                    const useStoichiometric = (isPouring || isPostReaction) && state.unknownMoleculeCount > 0;
+
+                    let krDots: number, urDots: number, prDots: number;
+                    if (useStoichiometric) {
+                      const productsFormed = Math.min(state.knownMoleculeCount, state.unknownMoleculeCount);
+                      const knownRemaining = state.knownMoleculeCount - productsFormed;
+                      const unknownExcess = Math.max(0, state.unknownMoleculeCount - state.knownMoleculeCount);
+                      krDots = Math.min(maxDots, Math.round(knownRemaining * scale));
+                      urDots = Math.min(maxDots, Math.round(unknownExcess * scale));
+                      prDots = Math.min(maxDots, Math.round(productsFormed * scale));
+                    } else {
+                      // Progress-based (animation replay)
+                      krDots = state.knownMoleculeCount > 0
+                        ? Math.min(maxDots, Math.max(0, Math.round(state.knownMoleculeCount * scale * (1 - p))))
+                        : 0;
+                      urDots = state.unknownMoleculeCount > 0
+                        ? Math.min(maxDots, Math.max(0, Math.round(state.unknownMoleculeCount * scale * (1 - p))))
+                        : 0;
+                      prDots = (state.knownMoleculeCount > 0 && state.unknownMoleculeCount > 0)
+                        ? Math.min(maxDots, Math.round(Math.min(state.knownMoleculeCount, state.unknownMoleculeCount) * scale * p))
+                        : 0;
+                    }
                     const molSize = 12;
                     return (
                       <>
@@ -578,22 +603,26 @@ export default function PrecipitationScreen() {
                 </div>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.knownReactant.color }} />
-                    <span className={styles.chartLabel}>{state.selectedReaction.knownReactant.formula}</span>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction!.knownReactant.color }} />
+                    <span className={styles.chartLabel}>{state.selectedReaction!.knownReactant.formula}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.unknownReactant.color }} />
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction!.unknownReactant.color }} />
                     <span className={styles.chartLabel}>
                       {state.metalRevealed
-                        ? replaceMetalInFormula(state.selectedReaction.unknownReactant.formulaTemplate, state.currentMetal)
-                        : replaceMetalInFormula(state.selectedReaction.unknownReactant.formulaTemplate, Metal.Sodium).replace(/Na|Li|K/g, 'M')}
+                        ? replaceMetalInFormula(state.selectedReaction!.unknownReactant.formulaTemplate, state.currentMetal)
+                        : replaceMetalInFormula(state.selectedReaction!.unknownReactant.formulaTemplate, Metal.Sodium).replace(/Na|Li|K/g, 'M')}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction.product.color }} />
-                    <span className={styles.chartLabel}>{state.selectedReaction.product.formula}</span>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: state.selectedReaction!.product.color }} />
+                    <span className={styles.chartLabel}>{state.selectedReaction!.product.formula}</span>
                   </div>
                 </div>
+              </div>
+            ) : (
+              <div className={styles.chartPlaceholder}>
+                <div className={styles.chartBars} />
               </div>
             )}
           </div>
@@ -601,41 +630,47 @@ export default function PrecipitationScreen() {
           {/* Right column */}
           <div className={styles.rightColumn}>
             <div className={styles.equationPanel}>
-              {/* Known reactant moles: n = V x M */}
-              <div className={styles.equationGroup}>
-                <div className={styles.equationLine}>
-                  <span style={{ fontStyle: 'italic' }}>n</span>
-                  <sub>{state.selectedReaction!.knownReactant.formula}</sub>
-                  {' = V \u00D7 '}
-                  <span style={{ fontStyle: 'italic' }}>M</span>
-                  <sub>{state.selectedReaction!.knownReactant.formula}</sub>
-                </div>
-                <div className={styles.equationLine}>
-                  {'= '}
-                  <span className={styles.equationValue}>
-                    {state.waterLevel.toFixed(2)}
-                  </span>
-                  {' \u00D7 '}
-                  {state.equationState !== 'blank' ? (
-                    <span className={styles.equationValue}>{state.knownReactantMolarity.toFixed(2)}</span>
-                  ) : (
-                    <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(180,180,180)', borderRadius: 3, textAlign: 'center', lineHeight: '20px', color: 'rgb(180,180,180)' }}>?</span>
-                  )}
-                </div>
-                {state.equationState !== 'blank' && (
-                  <div className={styles.equationLine}>
-                    <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
-                      <span className={styles.equationValue}>
-                        {state.knownReactantMoles.toFixed(2)}
-                      </span>
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Product moles: n = m / MM */}
-              {state.equationState === 'showAll' && (
+              {hasReaction ? (
                 <>
+                  {/* Top-left: Known reactant moles: n = V × M */}
+                  <div className={styles.equationGroup}>
+                    <div className={styles.equationLine}>
+                      <span style={{ fontStyle: 'italic' }}>n</span>
+                      <sub>{state.selectedReaction!.knownReactant.formula}</sub>
+                      {' = V \u00D7 '}
+                      <span style={{ fontStyle: 'italic' }}>M</span>
+                      <sub>{state.selectedReaction!.knownReactant.formula}</sub>
+                    </div>
+                    <div className={styles.equationLine}>
+                      {state.equationState !== 'blank' ? (
+                        <>
+                          <span className={styles.dashedPlaceholder}>
+                            <span className={styles.equationValue} style={{ fontSize: 11 }}>
+                              {state.knownReactantMoles.toFixed(2)}
+                            </span>
+                          </span>
+                          {' = '}
+                          <span className={styles.equationValue}>{state.waterLevel.toFixed(3)}</span>
+                          {' \u00D7 '}
+                          <span className={styles.dashedPlaceholder}>
+                            <span className={styles.equationValue} style={{ fontSize: 11 }}>
+                              {state.knownReactantMolarity.toFixed(2)}
+                            </span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className={styles.dashedPlaceholder} />
+                          {' = '}
+                          <span className={styles.equationValue}>{state.waterLevel.toFixed(3)}</span>
+                          {' \u00D7 '}
+                          <span className={styles.dashedPlaceholder} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top-right: Product moles: n = m / MM */}
                   <div className={styles.equationGroup} style={highlightStyle(state.highlights, 'productMoles')}>
                     <div className={styles.equationLine}>
                       <span style={{ fontStyle: 'italic' }}>n</span>
@@ -648,23 +683,37 @@ export default function PrecipitationScreen() {
                       </span>
                     </div>
                     <div className={styles.equationLine}>
-                      <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
-                        <span className={styles.equationValue}>
-                          {state.productMolesProduced.toFixed(2)}
-                        </span>
-                      </span>
-                      {' = '}
-                      <span className={styles.equationFraction}>
-                        <span className={styles.equationValue}>
-                          {state.productMassProduced.toFixed(2)}
-                        </span>
-                        <span className={styles.fractionLine} />
-                        <span>{state.selectedReaction!.product.molarMass}</span>
-                      </span>
+                      {state.equationState === 'showAll' ? (
+                        <>
+                          <span className={styles.dashedPlaceholder}>
+                            <span className={styles.equationValue} style={{ fontSize: 11 }}>
+                              {state.productMolesProduced.toFixed(2)}
+                            </span>
+                          </span>
+                          {' = '}
+                          <span className={styles.equationFraction}>
+                            <span className={styles.equationValue}>
+                              {state.productMassProduced.toFixed(2)}
+                            </span>
+                            <span className={styles.fractionLine} />
+                            <span>{state.selectedReaction!.product.molarMass}</span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className={styles.dashedPlaceholder} />
+                          {' = '}
+                          <span className={styles.equationFraction}>
+                            <span className={styles.dashedPlaceholder} />
+                            <span className={styles.fractionLine} />
+                            <span>{state.selectedReaction!.product.molarMass}</span>
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* Unknown reactant moles: iOS n_product = coeff × n_unknown(react) */}
+                  {/* Bottom-left: n_product = n_unknown(react) */}
                   <div className={styles.equationGroup} style={highlightStyle(state.highlights, 'unknownReactantMoles')}>
                     <div className={styles.equationLine}>
                       <span style={{ fontStyle: 'italic' }}>n</span>
@@ -677,24 +726,37 @@ export default function PrecipitationScreen() {
                       <sub>{unknownFormulaDisplay}<small>(react)</small></sub>
                     </div>
                     <div className={styles.equationLine}>
-                      <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
-                        <span className={styles.equationValue}>
-                          {state.productMolesProduced.toFixed(2)}
-                        </span>
-                      </span>
-                      {' = '}
-                      {state.selectedReaction!.unknownReactant.coefficient > 1 && (
-                        <>{state.selectedReaction!.unknownReactant.coefficient} &times; </>
+                      {state.equationState === 'showAll' ? (
+                        <>
+                          <span className={styles.dashedPlaceholder}>
+                            <span className={styles.equationValue} style={{ fontSize: 11 }}>
+                              {state.productMolesProduced.toFixed(2)}
+                            </span>
+                          </span>
+                          {' = '}
+                          {state.selectedReaction!.unknownReactant.coefficient > 1 && (
+                            <>{state.selectedReaction!.unknownReactant.coefficient} &times; </>
+                          )}
+                          <span className={styles.dashedPlaceholder}>
+                            <span className={styles.equationValue} style={{ fontSize: 11 }}>
+                              {state.unknownReactantMoles.toFixed(2)}
+                            </span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className={styles.dashedPlaceholder} />
+                          {' = '}
+                          {state.selectedReaction!.unknownReactant.coefficient > 1 && (
+                            <>{state.selectedReaction!.unknownReactant.coefficient} &times; </>
+                          )}
+                          <span className={styles.dashedPlaceholder} />
+                        </>
                       )}
-                      <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
-                        <span className={styles.equationValue}>
-                          {state.unknownReactantMoles.toFixed(2)}
-                        </span>
-                      </span>
                     </div>
                   </div>
 
-                  {/* Unknown reactant molar mass: MM = m / n */}
+                  {/* Bottom-right: MM_unknown = m / n */}
                   <div className={styles.equationGroup} style={highlightStyle(state.highlights, 'unknownReactantMolarMass')}>
                     <div className={styles.equationLine}>
                       MM<sub>{unknownFormulaDisplay}</sub>
@@ -706,20 +768,96 @@ export default function PrecipitationScreen() {
                       </span>
                     </div>
                     <div className={styles.equationLine}>
-                      <span style={{ display: 'inline-block', minWidth: 40, height: 20, border: '1.5px solid rgb(220,84,59)', borderRadius: 3, textAlign: 'center', lineHeight: '20px' }}>
-                        <span className={styles.equationValue}>
-                          {state.unknownReactantMolarMass}
-                        </span>
+                      {state.equationState === 'showAll' ? (
+                        <>
+                          <span className={styles.dashedPlaceholder}>
+                            <span className={styles.equationValue} style={{ fontSize: 11 }}>
+                              {state.unknownReactantMolarMass}
+                            </span>
+                          </span>
+                          {' = '}
+                          <span className={styles.equationFraction}>
+                            <span className={styles.equationValue}>
+                              {state.unknownReactantMassAdded.toFixed(2)}
+                            </span>
+                            <span className={styles.fractionLine} />
+                            <span className={styles.equationValue}>
+                              {state.unknownReactantMoles.toFixed(2)}
+                            </span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className={styles.dashedPlaceholder} />
+                          {' = '}
+                          <span className={styles.equationFraction}>
+                            <span className={styles.dashedPlaceholder} />
+                            <span className={styles.fractionLine} />
+                            <span className={styles.dashedPlaceholder} />
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Empty default equation placeholders */}
+                  <div className={styles.equationGroup}>
+                    <div className={styles.equationLine}>
+                      <span style={{ fontStyle: 'italic' }}>n</span> = V &times; <span style={{ fontStyle: 'italic' }}>M</span>
+                    </div>
+                    <div className={styles.equationLine}>
+                      <span className={styles.dashedPlaceholder} />
+                      {' = '}
+                      <span className={styles.dashedPlaceholder} />
+                      {' \u00D7 '}
+                      <span className={styles.dashedPlaceholder} />
+                    </div>
+                  </div>
+                  <div className={styles.equationGroup}>
+                    <div className={styles.equationLine}>
+                      <span style={{ fontStyle: 'italic' }}>n</span> = <span className={styles.equationFraction}>
+                        <span><span style={{ fontStyle: 'italic' }}>m</span></span>
+                        <span className={styles.fractionLine} />
+                        <span>MM</span>
                       </span>
+                    </div>
+                    <div className={styles.equationLine}>
+                      <span className={styles.dashedPlaceholder} />
                       {' = '}
                       <span className={styles.equationFraction}>
-                        <span className={styles.equationValue}>
-                          {state.unknownReactantMassAdded.toFixed(2)}
-                        </span>
+                        <span className={styles.dashedPlaceholder} />
                         <span className={styles.fractionLine} />
-                        <span className={styles.equationValue}>
-                          {state.unknownReactantMoles.toFixed(2)}
-                        </span>
+                        <span className={styles.dashedPlaceholder} />
+                      </span>
+                    </div>
+                  </div>
+                  <div className={styles.equationGroup}>
+                    <div className={styles.equationLine}>
+                      <span style={{ fontStyle: 'italic' }}>n</span><sub>product</sub> = <span style={{ fontStyle: 'italic' }}>n</span><sub>reactant</sub>
+                    </div>
+                    <div className={styles.equationLine}>
+                      <span className={styles.dashedPlaceholder} />
+                      {' = '}
+                      <span className={styles.dashedPlaceholder} />
+                    </div>
+                  </div>
+                  <div className={styles.equationGroup}>
+                    <div className={styles.equationLine}>
+                      MM = <span className={styles.equationFraction}>
+                        <span><span style={{ fontStyle: 'italic' }}>m</span></span>
+                        <span className={styles.fractionLine} />
+                        <span><span style={{ fontStyle: 'italic' }}>n</span></span>
+                      </span>
+                    </div>
+                    <div className={styles.equationLine}>
+                      <span className={styles.dashedPlaceholder} />
+                      {' = '}
+                      <span className={styles.equationFraction}>
+                        <span className={styles.dashedPlaceholder} />
+                        <span className={styles.fractionLine} />
+                        <span className={styles.dashedPlaceholder} />
                       </span>
                     </div>
                   </div>
@@ -738,22 +876,6 @@ export default function PrecipitationScreen() {
             </div>
           </div>
         </div>
-      ) : (
-        <div className={styles.placeholder}>
-          <div className={styles.placeholderContent}>
-            <div className={styles.placeholderText}>
-              Select a precipitation reaction to begin the simulation.
-            </div>
-            <BeakyBox
-              statement={guideStatement}
-              onNext={state.next}
-              onBack={state.back}
-              canGoNext={false}
-              showBack={false}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

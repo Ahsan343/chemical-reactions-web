@@ -144,8 +144,8 @@ export default function BeakyBox({
             type="button"
             className={styles.backButton}
             onClick={onBack}
-            aria-label="Previous"
-            style={{ width: navButtonSize, height: navButtonSize }}
+            aria-label="Go Back"
+            style={{ height: navButtonSize }}
           >
             {/* iOS: arrowtriangle.left.fill */}
             <svg
@@ -156,6 +156,12 @@ export default function BeakyBox({
             >
               <path d="M9 1L3 6l6 5z" fill="#000" />
             </svg>
+            <span
+              className={styles.backLabel}
+              style={{ fontSize: navButtonSize * 0.45 }}
+            >
+              Go Back
+            </span>
           </button>
         ) : (
           <div style={{ width: navButtonSize }} />
