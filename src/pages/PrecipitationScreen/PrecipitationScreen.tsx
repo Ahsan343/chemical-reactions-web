@@ -10,6 +10,7 @@ import {
 
 import { replaceMetalInFormula } from "../../helper/chemistry/molarMass";
 import { Metal } from "../../helper/chemistry/types";
+import { useCanvasScale } from "../../layout/ResponsiveLayout";
 
 import EquationDisplay, {
   type EquationSegment,
@@ -467,6 +468,7 @@ export default function PrecipitationScreen() {
   const [searchParams] = useSearchParams();
   const exploreMode = searchParams.get("mode") === "explore";
   const state = usePrecipitationState(exploreMode);
+  const canvasScale = useCanvasScale();
 
   // iOS: dropdown shows the full chemical equation with M placeholder
   // e.g. "M₂CO₃(aq) + CaCl₂(aq) → CaCO₃(s) + 2MCl(aq)"
