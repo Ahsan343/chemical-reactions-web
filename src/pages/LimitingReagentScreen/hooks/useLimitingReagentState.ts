@@ -59,6 +59,8 @@ const COMPLETED_EXPERIMENTS_KEY = 'limitingReagentCompleted';
 const MIN_LIMITING_MOLECULES = 12;
 const MAX_LIMITING_MOLECULES = 30;
 const MIN_EXTRA_EXCESS = 5;
+export const MIN_WATER_LEVEL = 0.1;
+export const MAX_WATER_LEVEL = 1;
 // iOS MoleculeGridSettings: 19 columns × 10 rows
 const GRID_COLS = 19;
 const GRID_ROWS = 10;
@@ -223,10 +225,11 @@ export function useLimitingReagentState(exploreMode = false) {
   }, [waterLevel, persistState, exploreMode]);
 
   const handleWaterLevelChange = useCallback((level: number) => {
-    setWaterLevel(level);
-    tagAction('adjustWaterLevel', 'limitingReagent', { level });
+    const clampedLevel = Math.max(MIN_WATER_LEVEL, Math.min(MAX_WATER_LEVEL, level));
+    setWaterLevel(clampedLevel);
+    tagAction('adjustWaterLevel', 'limitingReagent', { level: clampedLevel });
     if (selectedReaction) {
-      persistState(selectedReaction, level, moleculeCounts, inputPhase);
+      persistState(selectedReaction, clampedLevel, moleculeCounts, inputPhase);
     }
   }, [selectedReaction, moleculeCounts, inputPhase, persistState]);
 
