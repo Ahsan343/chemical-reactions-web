@@ -109,6 +109,42 @@
   flex-shrink: 0;
 }
 
+/* Blueprint: volume label next to slider ("0.100L" style, orange) */
+.volumeLabel {
+  position: absolute;
+  left: -8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgb(220, 84, 59);
+  white-space: nowrap;
+  pointer-events: none;
+  /* Positioned dynamically near the slider thumb — for now, below the beaker */
+  bottom: -20px;
+}
+
+/* Blueprint: "(X.XX g) added" persistent label above shaker area */
+.gramsAddedLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(220, 84, 59);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(220, 84, 59, 0.2);
+  border-radius: 6px;
+  padding: 4px 10px;
+  align-self: flex-start;
+  margin-left: 40px;
+  margin-bottom: 2px;
+}
+
+/* Blueprint: precipitate mass label inside macroscopic beaker ("3.0 g") */
+.precipitateMassLabel {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(60, 60, 60);
+  margin-top: 2px;
+}
+
 .precipitateOverlay {
   position: absolute;
   inset: 0;

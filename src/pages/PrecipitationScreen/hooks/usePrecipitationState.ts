@@ -12,7 +12,6 @@ import { tagAction } from '../../../helper/actionLogger';
 import { saveToStorage, setScreenCompleted } from '../../../helper/persistence/storage';
 
 type BeakerView = 'microscopic' | 'macroscopic';
-type PrecipitatePosition = 'beaker' | 'scales';
 
 type Phase =
   | 'chooseReaction'
@@ -26,9 +25,7 @@ type Phase =
   | 'reaction1'
   // Post-reaction1 (iOS step 8)
   | 'endReaction1'
-  // Interactive: weigh product
-  | 'weighProduct'
-  // Post-weighing narrative (iOS step 10)
+  // Post-reaction explanation (blueprint slide 66)
   | 'postWeighing'
   | 'revealMetal'
   | 'addExtraUnknown'
@@ -85,8 +82,6 @@ function getHighlightsForPhase(phase: Phase): HighlightElement[] {
     case 'endReaction1':
     case 'endReaction2':
       return ['beaker', 'beakerToggle'];
-    case 'weighProduct':
-      return []; // cleared — everything bright for drag interaction
     case 'postWeighing':
       return ['productMoles', 'unknownReactantMoles'];
     case 'revealMetal':
@@ -252,12 +247,9 @@ export interface PrecipitationState {
   knownMoleculeCount: number;
   unknownMoleculeCount: number;
   reactionProgress: number;
-  precipitatePosition: PrecipitatePosition;
-  precipitateMass: number | null;
   equationState: EquationState;
   metalRevealed: boolean;
   phase: Phase;
-  isDropTarget: boolean;
 
   knownMolecules: MoleculeDot[];
   unknownMolecules: MoleculeDot[];
@@ -282,9 +274,6 @@ export interface PrecipitationState {
   toggleBeakerView: (view: BeakerView) => void;
   setWaterLevel: (level: number) => void;
   addReactant: (type: 'known' | 'unknown', count: number) => void;
-  dragPrecipitate: (position: PrecipitatePosition) => void;
-  setDropTarget: (active: boolean) => void;
-  weighProduct: () => void;
   runReactionAgain: () => void;
   next: () => void;
   back: () => void;
@@ -302,11 +291,9 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
   const [knownMoleculeCount, setKnownMoleculeCount] = useState(0);
   const [unknownMoleculeCount, setUnknownMoleculeCount] = useState(0);
   const [reactionProgress, setReactionProgress] = useState(0);
-  const [precipitatePosition, setPrecipitatePosition] = useState<PrecipitatePosition>('beaker');
   const [equationState, setEquationState] = useState<EquationState>('blank');
   const [metalRevealed, setMetalRevealed] = useState(false);
   const [phase, setPhase] = useState<Phase>('chooseReaction');
-  const [isDropTarget, setIsDropTarget] = useState(false);
   const [productMolecules, setProductMolecules] = useState<MoleculeDot[]>([]);
   const reactionAnimRef = useRef<number | null>(null);
   // Track which experiment run we're on (iOS runs firstReaction + secondReaction sequentially)
@@ -375,11 +362,6 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     return productMolesProduced * selectedReaction.product.molarMass;
   }, [selectedReaction, productMolesProduced]);
 
-  const precipitateMass = useMemo(() => {
-    if (precipitatePosition !== 'scales') return null;
-    return productMassProduced * reactionProgress;
-  }, [precipitatePosition, productMassProduced, reactionProgress]);
-
   // Generate both molecule sets together so they don't overlap each other (iOS grid collision avoidance)
   const { knownMolecules, unknownMolecules } = useMemo(() => {
     if (!selectedReaction) return { knownMolecules: [] as MoleculeDot[], unknownMolecules: [] as MoleculeDot[] };
@@ -399,7 +381,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     const p = Math.min(1, Math.max(0, reactionProgress));
 
     // Not in a reaction phase — return static reactant dots
-    const reactionPhases: Phase[] = ['reaction1', 'endReaction1', 'reaction2', 'endReaction2', 'weighProduct', 'postWeighing', 'revealMetal', 'addExtraUnknown', 'complete'];
+    const reactionPhases: Phase[] = ['reaction1', 'endReaction1', 'reaction2', 'endReaction2', 'postWeighing', 'revealMetal', 'addExtraUnknown', 'complete'];
     if (!reactionPhases.includes(phase) || p === 0) {
       return [...knownMolecules, ...unknownMolecules];
     }
@@ -426,7 +408,6 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     setKnownMoleculeCount(0);
     setUnknownMoleculeCount(0);
     setReactionProgress(0);
-    setPrecipitatePosition('beaker');
     setEquationState('blank');
     setMetalRevealed(false);
     setBeakerView('microscopic');
@@ -488,22 +469,6 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     }
   }, [phase, exploreMode, waterLevel]);
 
-  const dragPrecipitate = useCallback((position: PrecipitatePosition) => {
-    if (!exploreMode && phase !== 'weighProduct') return;
-    setPrecipitatePosition(position);
-    tagAction('dragPrecipitate', 'precipitation', { position });
-  }, [phase, exploreMode]);
-
-  const setDropTargetState = useCallback((active: boolean) => {
-    setIsDropTarget(active);
-  }, []);
-
-  const weighProductAction = useCallback(() => {
-    if (phase !== 'weighProduct') return;
-    setPrecipitatePosition('scales');
-    tagAction('weighProduct', 'precipitation', {});
-  }, [phase]);
-
   const canGoNext = useMemo(() => {
     if (exploreMode) {
       switch (phase) {
@@ -513,8 +478,6 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         case 'addKnown':
         case 'addUnknown':
           return knownMoleculeCount > 0 && unknownMoleculeCount > 0;
-        case 'weighProduct':
-          return precipitatePosition === 'scales';
         case 'reaction1':
         case 'reaction2':
           return false;
@@ -544,8 +507,6 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       case 'addUnknown':
       case 'addExtraUnknown':
         return unknownMoleculeCount >= MIN_MOLECULES;
-      case 'weighProduct':
-        return precipitatePosition === 'scales';
       case 'reaction1':
       case 'reaction2':
         return reactionProgress >= (phase === 'reaction1' ? 0.5 : 1.0);
@@ -559,7 +520,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       default:
         return false;
     }
-  }, [phase, waterLevel, knownMoleculeCount, unknownMoleculeCount, precipitatePosition, reactionProgress, exploreMode, reactionRun]);
+  }, [phase, waterLevel, knownMoleculeCount, unknownMoleculeCount, reactionProgress, exploreMode, reactionRun]);
 
   const showBack = phase !== 'chooseReaction';
 
@@ -582,14 +543,14 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
             setEquationState('showMolarity');
             setBeakerView('macroscopic');
             setPhase('reaction1');
-            animateReaction(0, 0.5, 3000, () => setPhase('weighProduct'));
+            animateReaction(0, 0.5, 3000, () => {
+              setPhase('postWeighing');
+              setEquationState('showAll');
+            });
           }
           break;
-        case 'weighProduct':
-          if (precipitatePosition === 'scales') {
-            setPhase('revealMetal');
-            setEquationState('showAll');
-          }
+        case 'postWeighing':
+          setPhase('revealMetal');
           break;
         case 'revealMetal':
           setMetalRevealed(true);
@@ -643,22 +604,15 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         }
         break;
 
-      // Post reaction1: show precipitate, toggle beaker
+      // Post reaction1: show precipitate, then explanation
       case 'endReaction1':
         setBeakerView('macroscopic');
-        setPhase('weighProduct');
-        tagAction('nextPhase', 'precipitation', { from: 'endReaction1', to: 'weighProduct' });
+        setPhase('postWeighing');
+        setEquationState('showAll');
+        tagAction('nextPhase', 'precipitation', { from: 'endReaction1', to: 'postWeighing' });
         break;
 
-      case 'weighProduct':
-        if (precipitatePosition === 'scales') {
-          setPhase('postWeighing');
-          setEquationState('showAll');
-          tagAction('nextPhase', 'precipitation', { from: 'weighProduct', to: 'postWeighing' });
-        }
-        break;
-
-      // Post-weighing explanation
+      // Post-reaction explanation
       case 'postWeighing':
         setPhase('revealMetal');
         tagAction('nextPhase', 'precipitation', { from: 'postWeighing', to: 'revealMetal' });
@@ -666,8 +620,6 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
 
       case 'revealMetal':
         setMetalRevealed(true);
-        // iOS: precipitate returns to beaker for second reaction
-        setPrecipitatePosition('beaker');
         setBeakerView('macroscopic');
         setPhase('addExtraUnknown');
         tagAction('revealMetal', 'precipitation', { metal: currentMetal });
@@ -722,7 +674,6 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         setKnownMoleculeCount(0);
         setUnknownMoleculeCount(0);
         setReactionProgress(0);
-        setPrecipitatePosition('beaker');
         setEquationState('blank');
         setMetalRevealed(false);
         setBeakerView('microscopic');
@@ -735,7 +686,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       default:
         break;
     }
-  }, [phase, knownMoleculeCount, unknownMoleculeCount, precipitatePosition, exploreMode, currentMetal, selectedReaction, waterLevel, animateReaction, knownMolecules, unknownMolecules, completedReactionIds, reactionRun]);
+  }, [phase, knownMoleculeCount, unknownMoleculeCount, exploreMode, currentMetal, selectedReaction, waterLevel, animateReaction, knownMolecules, unknownMolecules, completedReactionIds, reactionRun]);
 
   const back = useCallback(() => {
     tagAction('back', 'precipitation', { fromPhase: phase });
@@ -762,16 +713,13 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         setUnknownMoleculeCount(0);
         break;
       case 'endReaction1':
-      case 'weighProduct':
         setPhase('addUnknown');
         setReactionProgress(0);
-        setPrecipitatePosition('beaker');
         setBeakerView('microscopic');
         break;
       case 'postWeighing':
       case 'revealMetal':
-        setPhase('weighProduct');
-        setPrecipitatePosition('beaker');
+        setPhase('endReaction1');
         setEquationState('showMolarity');
         break;
       default:
@@ -812,12 +760,9 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     knownMoleculeCount,
     unknownMoleculeCount,
     reactionProgress,
-    precipitatePosition,
-    precipitateMass,
     equationState,
     metalRevealed,
     phase,
-    isDropTarget,
     showRunAgain,
     highlights,
     reactionRun,
@@ -838,9 +783,6 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     toggleBeakerView,
     setWaterLevel: setWaterLevelClamped,
     addReactant,
-    dragPrecipitate,
-    setDropTarget: setDropTargetState,
-    weighProduct: weighProductAction,
     runReactionAgain,
     next,
     back,

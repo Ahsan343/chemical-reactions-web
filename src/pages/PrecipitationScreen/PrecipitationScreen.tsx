@@ -22,10 +22,7 @@ import BeakyBox from '../../components/shared/BeakyBox/BeakyBox';
 import { type TextLine } from '../../components/shared/guide/useGuideStore';
 import MetalTable from '../../components/precipitation/MetalTable/MetalTable';
 import PrecipitateShape from '../../components/precipitation/PrecipitateShape/PrecipitateShape';
-import DigitalScales from '../../components/precipitation/DigitalScales/DigitalScales';
 import BeakerToggle from '../../components/precipitation/BeakerToggle/BeakerToggle';
-import MovingHand from '../../components/shared/MovingHand/MovingHand';
-import { useCanvasScale } from '../../layout/ResponsiveLayout';
 
 import styles from './PrecipitationScreen.module.scss';
 
@@ -106,8 +103,6 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
         return [[{ text: 'Free Explore: Choose a reaction to begin experimenting freely.' }]];
       case 'reaction1':
         return [[{ text: 'The reaction is proceeding. A precipitate is forming...' }]];
-      case 'weighProduct':
-        return [[{ text: 'Drag the precipitate onto the scales to weigh it, then press Next.' }]];
       case 'revealMetal':
         return [[
           { text: 'Press Next to reveal the identity of metal ' },
@@ -131,52 +126,56 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
         [{ text: 'Choose a reaction.', bold: true }],
       ];
 
-    // Educational intro (iOS steps 2-3)
+    // Educational intro (blueprint slide 57)
     case 'explainPrecipitation':
       return [[
-        { text: 'This is a precipitation reaction. How do I know? Well, one way is to notice that one of the products is a ' },
+        { text: 'This is a Precipitation Reaction. How do I know? well, one way is to notice that one of the product is a ' },
         { text: 'solid (s)', bold: true },
-        { text: ', so once the reaction takes place, this solid will be produced and deposit as a precipitate. In this case, ' },
+        { text: ', so once reaction takes place, this solid will be produced and deposit as a precipitate. In this case ' },
         { text: state.selectedReaction?.product.formula ?? 'CaCO₃', bold: true },
-        { text: '.' },
       ]];
+    // Blueprint slide 58
     case 'explainUnknownMetal':
       return [[
-        { text: 'But there\'s something else that is strange about this reaction right? Well, ' },
+        { text: 'But there\'s something else that is strange about the reaction right? Well, ' },
         { text: 'M', bold: true, color: 'rgb(220, 84, 59)' },
         { text: ' is not a real element. M in this case represents just an alkaline metal. We will learn how stoichiometry can tell us which one of those 3 components is ' },
         { text: 'M', bold: true, color: 'rgb(220, 84, 59)' },
         { text: '.' },
       ]];
 
+    // Blueprint slide 59
     case 'setWaterLevel':
       return [
-        [{ text: 'This is a reaction that takes place in water, so let\'s set the volume of water in the beaker.' }],
+        [{ text: 'So this is a reaction that takes place in water, let\'s set the volume of water in the beaker.' }],
         [{ text: 'Use the slider to set the volume.', bold: true }],
       ];
+    // Blueprint slide 61
     case 'addKnown':
       return [
         [
-          { text: 'Perfect! Now, shake ' },
+          { text: 'Perfect! Now shake ' },
           { text: state.selectedReaction?.knownReactant.formula ?? 'known reactant', bold: true },
           { text: ' to prepare a solution of it.' },
         ],
         [{ text: 'Shake it into the beaker.', bold: true }],
       ];
+    // Blueprint slide 62
     case 'addUnknown':
       return [
         [
           { text: `You added ${state.knownReactantMoles.toFixed(2)} moles of ` },
           { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
-          { text: '. Now, go ahead and add ' },
+          { text: '. Now go ahead and add ' },
           { text: state.metalRevealed
               ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
               : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
             bold: true },
           { text: ' and let\'s watch them react.' },
         ],
-        [{ text: 'Notice the amount of grams added by the shaker. Keep shaking to see it react.', bold: true }],
+        [{ text: 'Notice the amount of grams added at the shaker. Keep shaking to see it react.', bold: true }],
       ];
+    // Blueprint slide 64
     case 'reaction1': {
       const reaction1Grams = state.unknownReactantMassAdded;
       const reaction1GramName = reaction1Grams === 1 ? 'gram' : 'grams';
@@ -189,7 +188,7 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
               ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
               : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
             bold: true },
-          { text: '. Now, let\'s watch the reaction going.' },
+          { text: '. Now let\'s just see the reaction going.' },
         ],
         [{ text: `Watch how ${state.selectedReaction?.product.formula ?? 'the product'} is produced.`, bold: true }],
       ];
@@ -205,17 +204,7 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
         [{ text: 'You can also tap back or the run again button to see the reaction again.' }],
       ];
 
-    case 'weighProduct':
-      return [
-        [
-          { text: 'Now, why don\'t you drag the solid ' },
-          { text: state.selectedReaction?.product.formula ?? 'product', bold: true },
-          { text: ' onto the scales to weigh it?' },
-        ],
-        [{ text: 'Drag the solid onto the scales.', bold: true }],
-      ];
-
-    // Post-weighing explanation (iOS step 10)
+    // Post-reaction explanation (blueprint slide 66)
     case 'postWeighing': {
       const postWeighGrams = state.productMassProduced;
       const gramName = postWeighGrams === 1 ? 'gram' : 'grams';
@@ -224,7 +213,7 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
       return [[
         { text: `${postWeighGrams.toFixed(2)} ${gramName} of `, bold: true },
         { text: state.selectedReaction?.product.formula ?? '', bold: true },
-        { text: ` was produced. By dividing this by its molar mass, we know that it is ${state.productMolesProduced.toFixed(2)} mol, which means that the ${unknownGrams2.toFixed(2)} ${unknownGramName2} of ` },
+        { text: ` was produced. By dividing this by its Molar Mass, we know that it's ${state.productMolesProduced.toFixed(2)} mol, which means that the ${unknownGrams2.toFixed(2)} ${unknownGramName2} of ` },
         { text: state.metalRevealed
             ? replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal)
             : replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', Metal.Sodium).replace(/Na|Li|K/g, 'M'),
@@ -234,6 +223,7 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
       ]];
     }
 
+    // Blueprint slide 67
     case 'revealMetal': {
       const unknownMolarMass = state.unknownReactantMolarMass;
       const unknownFormula = state.metalRevealed
@@ -247,20 +237,20 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
         { text: unknownFormula, bold: true },
         { text: `, then how many are in 1 mol? There are ${unknownMolarMass} grams of ` },
         { text: unknownFormula, bold: true },
-        { text: ` in 1 mol. That's right, ${unknownMolarMass} g/mol is the molar mass of it, and the molar mass of ` },
+        { text: `, in 1 mol. That's right, ${unknownMolarMass} g/mol is the Molar Mass of it, and ` },
         { text: revealedFormula, bold: true },
-        { text: ` matches it perfectly! So, ` },
+        { text: ` Molar Mass matches perfectly! So ` },
         { text: `M = ${state.currentMetal}`, bold: true, color: 'rgb(220, 84, 59)' },
-        { text: '.' },
       ]];
     }
+    // Blueprint slide 68
     case 'addExtraUnknown': {
       const revealedFormula2 = replaceMetalInFormula(state.selectedReaction?.unknownReactant.formulaTemplate ?? '', state.currentMetal);
       return [
         [
-          { text: 'We already discovered the mystery. At this point, ' },
+          { text: 'We already discovered the mystery. At this point the ' },
           { text: revealedFormula2, bold: true },
-          { text: ' is the limiting reagent, so just keep shaking ' },
+          { text: ' is the Limiting Reagent, so just keep shaking ' },
           { text: revealedFormula2, bold: true },
           { text: ' to neutralize the ' },
           { text: state.selectedReaction?.knownReactant.formula ?? '', bold: true },
@@ -281,14 +271,14 @@ function getGuideStatement(state: ReturnType<typeof usePrecipitationState>, expl
         [{ text: 'Change between both microscopic and macroscopic views.', bold: true }],
       ];
 
-    // Post-reaction2 (iOS step 14)
+    // Post-reaction2 (blueprint slide 70)
     case 'endReaction2':
       return [
         [{ text: 'Done! There\'s no more reactant left.' }],
         [
           { text: 'In a real laboratory, you would be able to extract the precipitate of ' },
           { text: state.selectedReaction?.product.formula ?? '', bold: true },
-          { text: ' with a filter and weigh it to know the mass, so this could be applied in real life.' },
+          { text: ' with a filter and weigh it to know the mass, so this could be applied to real life.' },
         ],
       ];
 
@@ -309,26 +299,6 @@ export default function PrecipitationScreen() {
   const [searchParams] = useSearchParams();
   const exploreMode = searchParams.get('mode') === 'explore';
   const state = usePrecipitationState(exploreMode);
-
-  const [isDragging, setIsDragging] = useState(false);
-  // Captures the pointer position AND the precipitate's left/top (in px
-  // relative to the beaker/scales row) at drag start, so we can update
-  // precipitatePos directly as the user drags. Updating left/top (rather
-  // than layering a transform offset that must later be cleared) means the
-  // CSS transition animates a single smooth glide from the release point to
-  // the scales — no "snap back to beaker then slide to scales" two-step.
-  const dragStartRef = useRef<{
-    pointerX: number;
-    pointerY: number;
-    originLeft: number;
-    originTop: number;
-  } | null>(null);
-  const precipitateRef = useRef<HTMLDivElement>(null);
-  const scalesRef = useRef<HTMLDivElement>(null);
-
-  // Divide viewport pointer deltas by the canvas scale so drag tracks the
-  // cursor 1:1 on scaled / mobile screens. No-op on desktop (scale === 1).
-  const canvasScale = useCanvasScale();
 
   // iOS: dropdown shows the full chemical equation with M placeholder
   // e.g. "M₂CO₃(aq) + CaCl₂(aq) → CaCO₃(s) + 2MCl(aq)"
@@ -351,111 +321,6 @@ export default function PrecipitationScreen() {
       }
     },
     [state],
-  );
-
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (!exploreMode && state.phase !== 'weighProduct') return;
-      if (state.precipitatePosition !== 'beaker') return;
-      e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      // Capture the precipitate's current position (relative to
-      // beakerScalesRow) directly from the DOM so we don't need precipitatePos
-      // as a callback dependency (avoids use-before-declaration).
-      const rowEl = beakerScalesRowRef.current;
-      const precipEl = precipitateRef.current;
-      let originLeft = 0;
-      let originTop = 0;
-      if (rowEl && precipEl) {
-        const rowRect = rowEl.getBoundingClientRect();
-        const pRect = precipEl.getBoundingClientRect();
-        const s = canvasScale > 0 ? canvasScale : 1;
-        // Convert viewport deltas back to logical pixels (see notes in the
-        // position-measuring useLayoutEffect above).
-        originLeft = (pRect.left + pRect.width / 2 - rowRect.left) / s;
-        originTop = (pRect.top + pRect.height / 2 - rowRect.top) / s;
-      }
-      dragStartRef.current = {
-        pointerX: e.clientX,
-        pointerY: e.clientY,
-        originLeft,
-        originTop,
-      };
-      setIsDragging(true);
-    },
-    [state.phase, state.precipitatePosition, exploreMode, canvasScale],
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!dragStartRef.current) return;
-      const scaleDivisor = canvasScale > 0 ? canvasScale : 1;
-      const dx = (e.clientX - dragStartRef.current.pointerX) / scaleDivisor;
-      const dy = (e.clientY - dragStartRef.current.pointerY) / scaleDivisor;
-      setPrecipitatePos({
-        left: `${dragStartRef.current.originLeft + dx}px`,
-        top: `${dragStartRef.current.originTop + dy}px`,
-      });
-
-      if (scalesRef.current) {
-        const scalesRect = scalesRef.current.getBoundingClientRect();
-        const isOver =
-          e.clientX >= scalesRect.left &&
-          e.clientX <= scalesRect.right &&
-          e.clientY >= scalesRect.top &&
-          e.clientY <= scalesRect.bottom;
-        state.setDropTarget(isOver);
-      }
-    },
-    [state, canvasScale],
-  );
-
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent) => {
-      if (!dragStartRef.current) return;
-      dragStartRef.current = null;
-      setIsDragging(false);
-
-      if (scalesRef.current) {
-        const scalesRect = scalesRef.current.getBoundingClientRect();
-        const isOver =
-          e.clientX >= scalesRect.left &&
-          e.clientX <= scalesRect.right &&
-          e.clientY >= scalesRect.top &&
-          e.clientY <= scalesRect.bottom;
-
-        if (isOver) {
-          // Commit the drop → the position useLayoutEffect will remeasure to
-          // the scales centre, and because the draggable class is gone the
-          // CSS transition on left/top produces ONE smooth glide.
-          state.dragPrecipitate('scales');
-        } else {
-          // Not over scales: snap back to beaker via the same transition.
-          // Force the effect to re-run by triggering a measure through
-          // setting position explicitly. The effect re-runs anyway because
-          // precipitatePosition hasn't changed — so manually reset.
-          const rowEl = beakerScalesRowRef.current;
-          const beakerEl = beakerWrapperRef.current;
-          if (rowEl && beakerEl) {
-            const rowRect = rowEl.getBoundingClientRect();
-            const beakerRect = beakerEl.getBoundingClientRect();
-            const waterSurface = beakerEl.querySelector('[data-water-surface]');
-            const s = canvasScale > 0 ? canvasScale : 1;
-            const beakerCenterX =
-              (beakerRect.left + beakerRect.width / 2 - rowRect.left) / s;
-            const waterCenterY = waterSurface
-              ? (((waterSurface as HTMLElement).getBoundingClientRect().top + beakerRect.bottom) / 2 - rowRect.top) / s
-              : (beakerRect.top + beakerRect.height * 0.7 - rowRect.top) / s;
-            setPrecipitatePos({
-              left: `${beakerCenterX}px`,
-              top: `${waterCenterY}px`,
-            });
-          }
-        }
-      }
-      state.setDropTarget(false);
-    },
-    [state, canvasScale],
   );
 
   const hasReaction = state.selectedReaction !== null;
@@ -500,72 +365,7 @@ export default function PrecipitationScreen() {
     };
   }, [hasReaction, state.waterLevel]);
 
-  // Precipitate position: measures beaker water center and scales center
-  // relative to beakerScalesRow, and transitions smoothly between them (iOS: easeOut 0.25s)
-  const beakerScalesRowRef = useRef<HTMLDivElement>(null);
-  const [precipitatePos, setPrecipitatePos] = useState<{ left: string; top: string }>({
-    left: '50%',
-    top: '70%',
-  });
-
-  useLayoutEffect(() => {
-    const measure = () => {
-      const rowEl = beakerScalesRowRef.current;
-      const beakerEl = beakerWrapperRef.current;
-      const scalesEl = scalesRef.current;
-      if (!rowEl) return;
-      // getBoundingClientRect returns viewport pixels. When the page is
-      // wrapped in ResponsiveLayout's `transform: scale()` container,
-      // everything inside is scaled — so viewport pixels = logicalPixels *
-      // scale. The precipitate element lives inside that same scaled
-      // container and its CSS left/top are interpreted in the parent's
-      // *logical* coordinate system. So divide viewport deltas by the scale
-      // to get back to logical pixels. On desktop (scale = 1) this is a
-      // no-op. Without it, at e.g. scale 0.5 the precipitate lands at half
-      // the intended position — above the water, offset from the cursor,
-      // etc. (matches the bug reported for small screens).
-      const s = canvasScale > 0 ? canvasScale : 1;
-      const rowRect = rowEl.getBoundingClientRect();
-
-      if (state.precipitatePosition === 'beaker' && beakerEl) {
-        // iOS: precipitate sits at center of water column
-        const waterSurface = beakerEl.querySelector('[data-water-surface]');
-        const beakerRect = beakerEl.getBoundingClientRect();
-        const beakerCenterX =
-          (beakerRect.left + beakerRect.width / 2 - rowRect.left) / s;
-
-        let waterCenterY: number;
-        if (waterSurface) {
-          const wsRect = waterSurface.getBoundingClientRect();
-          // Center between water surface and beaker bottom
-          waterCenterY =
-            ((wsRect.top + beakerRect.bottom) / 2 - rowRect.top) / s;
-        } else {
-          waterCenterY =
-            (beakerRect.top + beakerRect.height * 0.7 - rowRect.top) / s;
-        }
-
-        setPrecipitatePos({
-          left: `${beakerCenterX}px`,
-          top: `${waterCenterY}px`,
-        });
-      } else if (state.precipitatePosition === 'scales' && scalesEl) {
-        const scalesRect = scalesEl.getBoundingClientRect();
-        setPrecipitatePos({
-          left: `${(scalesRect.left + scalesRect.width / 2 - rowRect.left) / s}px`,
-          top: `${(scalesRect.top + scalesRect.height * 0.3 - rowRect.top) / s}px`,
-        });
-      }
-    };
-    const raf = requestAnimationFrame(measure);
-    window.addEventListener('resize', measure);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', measure);
-    };
-  }, [state.precipitatePosition, state.waterLevel, hasReaction, canvasScale]);
-
-  const isReactionPhase = state.phase === 'reaction1' || state.phase === 'reaction2' || state.phase === 'weighProduct' || state.phase === 'revealMetal' || state.phase === 'complete';
+  const isReactionPhase = state.phase === 'reaction1' || state.phase === 'reaction2' || state.phase === 'revealMetal' || state.phase === 'complete';
   const knownContainerActive = exploreMode ? (hasReaction && !isReactionPhase) : state.phase === 'addKnown';
   const unknownContainerActive = exploreMode ? (hasReaction && !isReactionPhase) : (state.phase === 'addUnknown' || state.phase === 'addExtraUnknown');
 
@@ -584,7 +384,7 @@ export default function PrecipitationScreen() {
             selectedId={state.selectedReaction?.id ?? null}
             onChange={handleSelectReaction}
             disabled={exploreMode ? false : (state.phase !== 'chooseReaction' && state.phase !== 'complete')}
-            placeholder="Choose a reaction"
+            placeholder="Choose a Substance"
           />
         </div>
       </div>
@@ -593,6 +393,13 @@ export default function PrecipitationScreen() {
         <div className={styles.mainContent}>
           {/* Left column */}
           <div className={styles.leftColumn}>
+            {/* "(X.XX g) added" label — shown after unknown reactant has been added (blueprint slides 64-71) */}
+            {state.unknownReactantMassAdded > 0 && (
+              <div className={styles.gramsAddedLabel}>
+                ({state.unknownReactantMassAdded.toFixed(2)} g) added
+              </div>
+            )}
+
             <div className={styles.containersRow} ref={containersRowRef}>
               <div style={highlightStyle(state.highlights, 'knownReactantContainer')}>
                 <ShakingContainer
@@ -628,7 +435,7 @@ export default function PrecipitationScreen() {
                   isActive={unknownContainerActive}
                   tooltipText={
                     unknownContainerActive && state.unknownReactantMassAdded > 0
-                      ? `${state.unknownReactantMassAdded.toFixed(2)} g`
+                      ? `(${state.unknownReactantMassAdded.toFixed(2)} g)`
                       : undefined
                   }
                   fallDistance={fallDistance}
@@ -636,7 +443,7 @@ export default function PrecipitationScreen() {
               </div>
             </div>
 
-            <div className={styles.beakerScalesRow} ref={beakerScalesRowRef}>
+            <div className={styles.beakerScalesRow}>
               <div
                 className={styles.beakerWrapper}
                 ref={beakerWrapperRef}
@@ -661,8 +468,32 @@ export default function PrecipitationScreen() {
                     molecules={state.reactionMolecules}
                     animated
                   />
-                ) : null}
+                ) : (
+                  /* Macroscopic view: show precipitate inside beaker */
+                  hasReaction && state.reactionProgress > 0 ? (
+                    <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)' }}>
+                      <PrecipitateShape
+                        progress={state.reactionProgress}
+                        color={state.selectedReaction!.product.color}
+                        size={(() => {
+                          const w = Math.max(MIN_WATER_LEVEL, Math.min(MAX_WATER_LEVEL, state.waterLevel));
+                          const t = (w - MIN_WATER_LEVEL) / (MAX_WATER_LEVEL - MIN_WATER_LEVEL);
+                          return Math.round(36 + t * 24);
+                        })()}
+                      />
+                      {/* Blueprint: precipitate mass label inside macroscopic beaker */}
+                      <div className={styles.precipitateMassLabel}>
+                        {(state.productMassProduced * state.reactionProgress).toFixed(1)} g
+                      </div>
+                    </div>
+                  ) : null
+                )}
               </FillableBeaker>
+
+              {/* Volume label next to slider (blueprint: "0.100L" style) */}
+              <div className={styles.volumeLabel}>
+                {state.waterLevel.toFixed(3)}L
+              </div>
 
               {/* iOS "Run again?" button — shown after reactions complete */}
               {state.showRunAgain && (
@@ -675,76 +506,7 @@ export default function PrecipitationScreen() {
                 </button>
               )}
               </div>
-
-              <div className={styles.scalesArea} ref={scalesRef}>
-                <DigitalScales
-                  mass={state.precipitateMass}
-                  isDropTarget={state.isDropTarget}
-                  showMass={state.precipitatePosition === 'scales'}
-                />
-              </div>
-
-              {/* Unified precipitate — animates between beaker center and scales */}
-              {hasReaction && state.reactionProgress > 0 && state.beakerView === 'macroscopic' && (
-                <div
-                  ref={precipitateRef}
-                  className={`${styles.precipitateAnimated} ${
-                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
-                      ? styles.precipitateDraggable
-                      : ''
-                  }`}
-                  style={{
-                    ...precipitatePos,
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 10,
-                  }}
-                  onPointerDown={
-                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
-                      ? handlePointerDown
-                      : undefined
-                  }
-                  onPointerMove={
-                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
-                      ? handlePointerMove
-                      : undefined
-                  }
-                  onPointerUp={
-                    state.phase === 'weighProduct' && state.precipitatePosition === 'beaker'
-                      ? handlePointerUp
-                      : undefined
-                  }
-                >
-                  <PrecipitateShape
-                    progress={state.reactionProgress}
-                    color={state.selectedReaction!.product.color}
-                    size={(() => {
-                      // Scale the precipitate polygon with water level so it
-                      // always stays inside the liquid region. At min water
-                      // (small puddle) cap at 36px; at max water use 60px.
-                      const w = Math.max(
-                        MIN_WATER_LEVEL,
-                        Math.min(MAX_WATER_LEVEL, state.waterLevel),
-                      );
-                      const t = (w - MIN_WATER_LEVEL) / (MAX_WATER_LEVEL - MIN_WATER_LEVEL);
-                      return Math.round(36 + t * 24);
-                    })()}
-                  />
-                </div>
-              )}
             </div>
-
-            {/* Hand gesture animation: guides user to drag precipitate → scales */}
-            <MovingHand
-              startRef={precipitateRef}
-              endRef={scalesRef}
-              visible={
-                state.phase === 'weighProduct' &&
-                state.precipitatePosition === 'beaker' &&
-                state.beakerView === 'macroscopic' &&
-                !isDragging
-              }
-              showDelay={2}
-            />
 
             <div className={styles.toggleArea} style={highlightStyle(state.highlights, 'beakerToggle')}>
               <BeakerToggle
