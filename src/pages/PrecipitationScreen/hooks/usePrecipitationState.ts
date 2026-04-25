@@ -398,9 +398,12 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       return [...visibleKnown, ...visibleUnknown, ...visibleProducts];
     };
 
-    // Real-time reaction during pouring — products appear as unknowns are added
-    if ((phase === 'addUnknown' || phase === 'addExtraUnknown') && productMolecules.length > 0) {
-      return stoichiometric();
+    // Per Ted's 3-step directive: during the pour phases (addUnknown /
+    // addExtraUnknown) reactants accumulate in the beaker WITHOUT converting
+    // to products yet. Conversion only happens during the dedicated
+    // reaction1/reaction2 animation phases below.
+    if (phase === 'addUnknown' || phase === 'addExtraUnknown') {
+      return [...knownMolecules, ...unknownMolecules];
     }
 
     // Post-reaction phases: show stoichiometric result (no animation)
@@ -619,14 +622,9 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         break;
       case 'addKnown':
         if (knownMoleculeCount >= MIN_MOLECULES) {
-          // Pre-generate product positions for real-time reaction during pouring.
-          // Pool size = knownMoleculeCount (max possible products in 1:1 stoichiometry).
-          if (selectedReaction) {
-            const prods = generateMoleculePositions(
-              knownMoleculeCount, selectedReaction.product.color, waterLevel, knownMolecules,
-            );
-            setProductMolecules(prods);
-          }
+          // Per Ted's directive: 3-step animation. Don't pre-generate products
+          // here; products only appear during the dedicated `reaction1` phase
+          // animation (mirrors limiting-reagent's `reacting` phase).
           setPhase('addUnknown');
           setEquationState('showMolarity');
           tagAction('nextPhase', 'precipitation', { from: 'addKnown', to: 'addUnknown', knownMoleculeCount });
@@ -634,13 +632,32 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         break;
       case 'addUnknown':
         if (unknownMoleculeCount >= MIN_MOLECULES) {
-          // Products already formed in real-time during pouring (stoichiometric
-          // visibility in reactionMolecules memo). Transition straight to the
-          // post-reaction state — no separate animation needed.
-          setReactionProgress(0.5);
-          setPhase('endReaction1');
+          // 3-step animation flow:
+          //   1) reactants poured in (already happened in addKnown + addUnknown)
+          //   2) user clicks Next → enter reaction1 phase
+          //   3) animation plays out: reactants progressively → products
+          // Generate product positions just-in-time for the animation.
+          if (selectedReaction) {
+            const prods = generateMoleculePositions(
+              knownMoleculeCount, selectedReaction.product.color, waterLevel, knownMolecules,
+            );
+            setProductMolecules(prods);
+          }
+          setPhase('reaction1');
+          setReactionProgress(0);
+          // Animate reactants → products over 3s, then advance to endReaction1
+          animateReaction(0, 0.5, 3000, () => {
+            setPhase('endReaction1');
+            tagAction('reactionComplete', 'precipitation', { reaction: 1 });
+          });
           tagAction('startReaction', 'precipitation', { reaction: 1, unknownMoleculeCount });
         }
+        break;
+      case 'reaction1':
+        // Allow user to skip to end if mid-animation (mirrors LR behavior)
+        if (reactionAnimRef.current) cancelAnimationFrame(reactionAnimRef.current);
+        setReactionProgress(0.5);
+        setPhase('endReaction1');
         break;
 
       // Post reaction1: show precipitate, then explanation
@@ -666,10 +683,20 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         tagAction('revealMetal', 'precipitation', { metal: currentMetal });
         break;
       case 'addExtraUnknown':
-        // Products already formed in real-time during pouring.
+        // 3-step animation: enter reaction2 phase and animate progress 0.5→1.0
+        // (continuing from the first reaction's halfway-completed state) before
+        // landing on endReaction2.
+        setPhase('reaction2');
+        animateReaction(0.5, 1.0, 3000, () => {
+          setPhase('endReaction2');
+          tagAction('reactionComplete', 'precipitation', { reaction: 2 });
+        });
+        tagAction('startReaction', 'precipitation', { reaction: 2 });
+        break;
+      case 'reaction2':
+        if (reactionAnimRef.current) cancelAnimationFrame(reactionAnimRef.current);
         setReactionProgress(1.0);
         setPhase('endReaction2');
-        tagAction('startReaction', 'precipitation', { reaction: 2 });
         break;
 
       // Post reaction2
@@ -755,6 +782,41 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       case 'revealMetal':
         setPhase('endReaction1');
         setEquationState('showMolarity');
+        break;
+      case 'addExtraUnknown':
+        // Returning from "add extra NaHCO3" → revealMetal narrative slide
+        setPhase('revealMetal');
+        break;
+      case 'reaction1':
+      case 'reaction2':
+        // Cancel any in-flight animation and step back to the appropriate
+        // pour phase so the user can redo the add.
+        if (reactionAnimRef.current) cancelAnimationFrame(reactionAnimRef.current);
+        if (phase === 'reaction1') {
+          setPhase('addUnknown');
+          setUnknownMoleculeCount(0);
+          setReactionProgress(0);
+          setProductMolecules([]);
+        } else {
+          setPhase('addExtraUnknown');
+          setReactionProgress(0.5);
+        }
+        setBeakerView('microscopic');
+        break;
+      case 'endReaction2':
+        setPhase('addExtraUnknown');
+        setReactionProgress(0.5);
+        setBeakerView('microscopic');
+        break;
+      case 'complete':
+        // Fixes Ted's "Here I can't go back" complaint — the Experiment
+        // Complete screen had no back handler. Step back to the second
+        // reaction's end state so the user can review or re-run.
+        setPhase('endReaction2');
+        setBeakerView('macroscopic');
+        break;
+      case 'prepareSecondReaction':
+        setPhase('complete');
         break;
       default:
         break;

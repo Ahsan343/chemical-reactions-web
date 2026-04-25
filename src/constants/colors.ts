@@ -5,28 +5,35 @@ export const AtomColors = {
   oxygen: 'rgb(218, 105, 136)',
 } as const;
 
+// Blueprint palette — color-picked from PPTX slide images (slides 37, 47, 54
+// for limiting reagent; slides 62, 64, 68 for precipitation). Per Ted's PPTX
+// comment 2 ("update the colors for the graph and assets"), the simulation
+// must match the blueprint slides, NOT the iOS Swift palette which uses
+// generic .red / .purple / .blue.
 export const MoleculeColors = {
-  A: 'rgb(0, 122, 255)',   // iOS .blue
-  B: 'rgb(255, 59, 48)',   // iOS .red
-  C: 'rgb(255, 150, 0)',   // Brighter orange
-  D: 'rgb(255, 100, 50)',  // Brighter orange-red
-  E: 'rgb(175, 82, 222)',  // iOS .purple
-  F: 'rgb(120, 60, 100)',  // Saturated purple-red
-  G: 'rgb(200, 100, 180)', // Vibrant pink
-  H: 'rgb(30, 200, 180)',  // Vibrant teal
-  I: 'rgb(255, 200, 80)',  // Vibrant gold
+  A: 'rgb(240, 208, 112)', // blueprint gold — Na2C2O4 / product (LR)
+  B: 'rgb(128, 208, 224)', // blueprint teal — H2C2O4 / limiting (LR)
+  C: 'rgb(240, 112, 64)',  // blueprint orange (slider pill)
+  D: 'rgb(255, 100, 50)',  // legacy orange-red
+  E: 'rgb(160, 160, 240)', // blueprint lavender — NaHCO3 / excess (LR)
+  F: 'rgb(120, 60, 100)',  // legacy
+  G: 'rgb(224, 96, 128)',  // blueprint rose — precipitation unknown reactant
+  H: 'rgb(160, 176, 240)', // blueprint periwinkle — precipitation known reactant
+  I: 'rgb(224, 224, 208)', // blueprint cream — precipitation product
 } as const;
 
 export const PrecipitationColors = {
   reaction1: {
-    knownReactant: 'rgb(100, 149, 237)',
-    unknownReactant: 'rgb(220, 80, 80)',
-    product: 'rgb(210, 195, 160)',
+    // Blueprint slides 62/64: known=periwinkle, unknown=rose, product=cream
+    knownReactant: 'rgb(160, 176, 240)',
+    unknownReactant: 'rgb(224, 96, 128)',
+    product: 'rgb(224, 224, 208)',
   },
   reaction2: {
-    knownReactant: 'rgb(76, 72, 67)',
-    unknownReactant: 'rgb(225, 64, 61)',
-    product: 'rgb(87, 167, 115)',
+    // Blueprint slide 68 second reaction palette
+    knownReactant: 'rgb(160, 176, 240)',
+    unknownReactant: 'rgb(224, 96, 128)',
+    product: 'rgb(224, 224, 208)',
   },
 } as const;
 

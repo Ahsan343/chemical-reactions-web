@@ -426,15 +426,55 @@ export function useLimitingReagentState(exploreMode = false) {
     tagAction('goBack', 'limitingReagent', { from: inputPhase, to: prevPhase });
     setInputPhase(prevPhase);
 
-    // Restore equation state based on phase
-    if (PHASE_ORDER.indexOf(prevPhase) < PHASE_ORDER.indexOf('explainMolarity')) {
+    // Reset state when re-entering an interactive add/reaction phase from
+    // downstream so the user can redo it cleanly (fixes "can't add more
+    // reagent after going back" — Ted PPTX comment 1 on slide 37).
+    let updatedCounts = moleculeCounts;
+
+    if (prevPhase === 'addLimiting') {
+      // Returning to "shake H2C2O4 in" — clear the whole experiment since
+      // every downstream value depends on the limiting reactant amount.
+      setLimitingDots([]);
+      setExcessDots([]);
+      setProductDots([]);
+      setExtraExcessDots([]);
+      setExtraExcessCount(0);
+      setReactionProgress(0);
+      setIsReacting(false);
+      updatedCounts = { limiting: 0, excess: 0, product: 0 };
+      setMoleculeCounts(updatedCounts);
+      setEquationState('blank');
+    } else if (prevPhase === 'addExcess') {
+      // Returning to "shake NaHCO3 in" — clear excess + product, keep limiting
+      setExcessDots([]);
+      setProductDots([]);
+      setExtraExcessDots([]);
+      setExtraExcessCount(0);
+      setReactionProgress(0);
+      setIsReacting(false);
+      updatedCounts = { ...moleculeCounts, excess: 0, product: 0 };
+      setMoleculeCounts(updatedCounts);
+      setEquationState('theoretical');
+    } else if (prevPhase === 'reacting') {
+      // Returning to "wait for reaction" — clear products + reset progress
+      setProductDots([]);
+      setReactionProgress(0);
+      setIsReacting(false);
+      updatedCounts = { ...moleculeCounts, product: 0 };
+      setMoleculeCounts(updatedCounts);
+      setEquationState('theoretical');
+    } else if (prevPhase === 'addExtraExcess') {
+      // Returning to "add extra NaHCO3 that won't react" — clear extra dots
+      setExtraExcessDots([]);
+      setExtraExcessCount(0);
+    } else if (PHASE_ORDER.indexOf(prevPhase) < PHASE_ORDER.indexOf('explainMolarity')) {
       setEquationState('blank');
     } else if (PHASE_ORDER.indexOf(prevPhase) < PHASE_ORDER.indexOf('reacting')) {
       setEquationState('theoretical');
     }
 
     if (selectedReaction) {
-      persistState(selectedReaction, waterLevel, moleculeCounts, prevPhase);
+      persistState(selectedReaction, waterLevel, updatedCounts, prevPhase);
     }
   }, [inputPhase, isReacting, selectedReaction, waterLevel, moleculeCounts, persistState, reset]);
 

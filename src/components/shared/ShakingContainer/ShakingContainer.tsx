@@ -10,6 +10,10 @@ interface ShakingContainerProps {
   tooltipText?: string;
   /** CSS-variable-driven distance the particles travel (e.g. "320px"). Defaults to 110px. */
   fallDistance?: string;
+  /** When true, first click "positions" the bottle (tilts, shows pour tooltip),
+   *  second click pours. Mirrors thermodynamics-unit6 reference. Default false
+   *  to preserve existing single-tap shake-in flow in limiting reagent. */
+  twoTapPour?: boolean;
 }
 
 interface FallingParticle {
@@ -59,10 +63,18 @@ export default function ShakingContainer({
   isActive = false,
   tooltipText,
   fallDistance,
+  twoTapPour = false,
 }: ShakingContainerProps) {
   const [pourKey, setPourKey] = useState(0);
   const [pouring, setPouring] = useState(false);
+  /** Two-tap mode: tracks whether the bottle is "positioned" (first tap done). */
+  const [positioned, setPositioned] = useState(false);
   const pourTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset positioned state when the bottle becomes inactive (phase changed)
+  useEffect(() => {
+    if (!isActive) setPositioned(false);
+  }, [isActive]);
 
   const containerW = 40;
   const containerH = containerW * 2.33;
@@ -91,6 +103,11 @@ export default function ShakingContainer({
 
   const handleClick = useCallback(() => {
     if (disabled) return;
+    // Two-tap pour mode: first click positions, second pours.
+    if (twoTapPour && !positioned) {
+      setPositioned(true);
+      return;
+    }
     // Delay molecule appearance until particles reach the water surface
     if (pourCallbackRef.current) clearTimeout(pourCallbackRef.current);
     pourCallbackRef.current = setTimeout(() => onPour(), 420);
@@ -98,7 +115,7 @@ export default function ShakingContainer({
     setPouring(true);
     if (pourTimerRef.current) clearTimeout(pourTimerRef.current);
     pourTimerRef.current = setTimeout(() => setPouring(false), 600);
-  }, [disabled, onPour]);
+  }, [disabled, onPour, twoTapPour, positioned]);
 
   const labelH = LABEL_HEIGHT_RATIO * containerH;
   const labelY = containerH - labelH;
@@ -107,9 +124,17 @@ export default function ShakingContainer({
     styles.container,
     isActive ? styles.active : '',
     disabled ? styles.disabled : '',
+    twoTapPour && positioned ? styles.positioned : '',
   ]
     .filter(Boolean)
     .join(' ');
+
+  // Tooltip override for two-tap mode — only when the container is active
+  // (interactable). Disabled/greyed containers fall back to the supplied
+  // tooltipText (typically empty).
+  const effectiveTooltip = twoTapPour && isActive && !disabled
+    ? (positioned ? 'Tap again to pour' : 'Tap to position above beaker')
+    : tooltipText;
 
   return (
     <div className={styles.wrapper}>
@@ -132,9 +157,9 @@ export default function ShakingContainer({
       </div>
 
       <div className={containerClasses}>
-        {tooltipText && (
+        {effectiveTooltip && (
           <div className={styles.tooltip} role="tooltip">
-            {tooltipText}
+            {effectiveTooltip}
           </div>
         )}
 

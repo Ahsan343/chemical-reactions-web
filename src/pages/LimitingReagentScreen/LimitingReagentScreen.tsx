@@ -11,6 +11,7 @@ import BeakyBox from '../../components/shared/BeakyBox/BeakyBox';
 import DropdownSelector from '../../components/shared/DropdownSelector/DropdownSelector';
 import BranchMenu from '../../components/shared/BranchMenu/BranchMenu';
 import LeftSidebar from '../../components/shared/LeftSidebar/LeftSidebar';
+import RightActionButtons from '../../components/shared/RightActionButtons/RightActionButtons';
 import HighlightOverlay from '../../components/shared/HighlightOverlay/HighlightOverlay';
 import EquationDisplay from '../../components/shared/EquationDisplay/EquationDisplay';
 import type { EquationSegment } from '../../components/shared/EquationDisplay/EquationDisplay';
@@ -183,7 +184,10 @@ export default function LimitingReagentScreen() {
           { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
           { text: `. When these two interact, they produce ` },
           { text: productsText, bold: true, color: r?.product.color },
-          { text: `. In this particular case, we have the ${r?.limitingReactant.state ?? 'liquid'} ` },
+          // Blueprint slide 37 hardcodes "solid" here (the user is shaking a
+          // solid powder into water) regardless of the limiting reactant's
+          // listed dissolved-state. Per "blueprint = source of truth".
+          { text: `. In this particular case, we have the solid ` },
           { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
           { text: ', so ' },
           { text: `shake it into the beaker.`, bold: true, color: 'rgb(220, 84, 59)' },
@@ -469,6 +473,13 @@ export default function LimitingReagentScreen() {
   return (
     <div className={styles.screen}>
       <LeftSidebar />
+      <RightActionButtons
+        onPlay={state.canGoNext ? state.next : undefined}
+        onUndo={hasReaction ? state.reset : undefined}
+        playActive={state.canGoNext && state.inputPhase !== 'selectReaction'}
+        playDisabled={!state.canGoNext}
+        undoDisabled={!hasReaction}
+      />
       <BranchMenu currentRoute={location.pathname} />
       <div className={styles.topBar}>
         <div className={styles.equationArea}>
@@ -542,8 +553,8 @@ export default function LimitingReagentScreen() {
                 onWaterLevelChange={state.setWaterLevel}
                 minWaterLevel={MIN_WATER_LEVEL}
                 disabled={exploreMode ? !hasReaction || state.isReacting : state.inputPhase !== 'setWaterLevel'}
-                liquidColor="rgb(100, 185, 240)"
-                width={200}
+                liquidColor="rgb(192, 224, 224)"
+                width={280}
               >
                 <BeakerMoleculeGrid
                   molecules={state.allMolecules}

@@ -18,6 +18,7 @@ import EquationDisplay, {
 import DropdownSelector from "../../components/shared/DropdownSelector/DropdownSelector";
 import BranchMenu from "../../components/shared/BranchMenu/BranchMenu";
 import LeftSidebar from "../../components/shared/LeftSidebar/LeftSidebar";
+import RightActionButtons from "../../components/shared/RightActionButtons/RightActionButtons";
 import { FillableBeaker } from "../../components/shared/Beaker/FillableBeaker";
 import { BeakerMoleculeGrid } from "../../components/shared/Beaker/BeakerMoleculeGrid";
 import ShakingContainer from "../../components/shared/ShakingContainer/ShakingContainer";
@@ -558,6 +559,13 @@ export default function PrecipitationScreen() {
   return (
     <div className={styles.screen}>
       <LeftSidebar />
+      <RightActionButtons
+        onPlay={state.canGoNext ? state.next : undefined}
+        onUndo={hasReaction ? state.runReactionAgain : undefined}
+        playActive={state.canGoNext && state.phase !== "chooseReaction"}
+        playDisabled={!state.canGoNext}
+        undoDisabled={!state.showRunAgain}
+      />
       <BranchMenu currentRoute={location.pathname} />
       {/* Top bar: equation + controls */}
       <div className={styles.topBar}>
@@ -619,6 +627,7 @@ export default function PrecipitationScreen() {
                     : undefined
                 }
                 fallDistance={fallDistance}
+                twoTapPour
               />
             </div>
             <div
@@ -657,6 +666,7 @@ export default function PrecipitationScreen() {
                     : undefined
                 }
                 fallDistance={fallDistance}
+                twoTapPour
               />
             </div>
           </div>
@@ -688,7 +698,7 @@ export default function PrecipitationScreen() {
                     ? !hasReaction || isReactionPhase
                     : state.phase !== "setWaterLevel"
                 }
-                width={160}
+                width={240}
               >
                 {state.beakerView === "microscopic" ? (
                   <BeakerMoleculeGrid

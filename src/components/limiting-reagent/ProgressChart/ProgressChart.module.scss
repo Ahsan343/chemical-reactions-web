@@ -1,20 +1,23 @@
 .container {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 6px;
+  width: 160px;
 }
 
+/* Three equal-flex slots used by both .plotArea (columns) and .axis (labels)
+   so each column lines up with its corresponding legend label. Fixes Ted's
+   PPTX comment 2 on slide 37 about the red column drifting away from its
+   subscript label. */
 .plotArea {
   display: flex;
   align-items: flex-end;
-  justify-content: center;
-  gap: 14px;
-  width: 160px;
+  width: 100%;
   border-left: 1.5px solid rgb(40, 40, 40);
   border-bottom: 1.5px solid rgb(40, 40, 40);
   border-right: 1.5px solid rgb(40, 40, 40);
-  padding: 6px 12px;
+  padding: 6px 0;
   box-sizing: border-box;
 }
 
@@ -23,7 +26,9 @@
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
-  width: 14px;
+  justify-content: flex-end;
+  flex: 1 1 0;
+  height: 100%;
 }
 
 /* Settled dot — positioned absolutely from bottom */
@@ -73,14 +78,16 @@
 
 .axis {
   display: flex;
-  gap: 16px;
-  justify-content: center;
+  width: 100%;
 }
 
 .axisItem {
   display: flex;
+  flex: 1 1 0;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .axisCircle {

@@ -1,0 +1,112 @@
+/* Right-edge floating round button cluster — colors picked from blueprint
+   slide 37 (info/undo teal #28A9B9, play red #B01040). Matches the
+   thermodynamics-unit6 reference exactly. */
+
+.cluster {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 5;
+  pointer-events: none;
+  /* Children re-enable */
+  > * {
+    pointer-events: auto;
+  }
+}
+
+.button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  padding: 0;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.08);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.info,
+.undo {
+  background: rgb(40, 169, 185); /* blueprint teal */
+}
+
+.play {
+  background: rgb(176, 16, 64); /* blueprint deep-pink/red */
+}
+
+.pulse {
+  animation: pulseRed 1.4s ease-in-out infinite;
+}
+
+@keyframes pulseRed {
+  0%, 100% {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 0 0 rgba(176, 16, 64, 0.55);
+  }
+  50% {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 0 8px rgba(176, 16, 64, 0);
+  }
+}
+
+.glyph {
+  color: white;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  user-select: none;
+}
+
+.glyphSvg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.infoTip {
+  position: absolute;
+  right: 48px;
+  top: 0;
+  background: rgb(66, 66, 66);
+  color: white;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: 8px;
+  width: 220px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    right: -6px;
+    border: 6px solid transparent;
+    border-left-color: rgb(66, 66, 66);
+    border-right: 0;
+  }
+}
