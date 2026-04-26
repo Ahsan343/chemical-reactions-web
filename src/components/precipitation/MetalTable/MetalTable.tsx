@@ -6,11 +6,13 @@ interface MetalTableProps {
   reaction: PrecipitationReactionDef;
   revealedMetal: Metal | null;
   showHighlight: boolean;
+  /** When true, render dash placeholders instead of actual compound / molar mass data */
+  hideData?: boolean;
 }
 
 const METALS = [Metal.Sodium, Metal.Lithium, Metal.Potassium];
 
-export default function MetalTable({ reaction, revealedMetal, showHighlight }: MetalTableProps) {
+export default function MetalTable({ reaction, revealedMetal, showHighlight, hideData = false }: MetalTableProps) {
   return (
     <table className={styles.table} aria-label="Metal molar mass reference">
       <thead>
@@ -21,9 +23,9 @@ export default function MetalTable({ reaction, revealedMetal, showHighlight }: M
       </thead>
       <tbody>
         {METALS.map((metal, index) => {
-          const isCorrect = showHighlight && revealedMetal === metal;
-          const formula = replaceMetalInFormula(reaction.unknownReactant.formulaTemplate, metal);
-          const molarMass = getUnknownReactantMolarMass(reaction, metal);
+          const isCorrect = !hideData && showHighlight && revealedMetal === metal;
+          const formula = hideData ? '—' : replaceMetalInFormula(reaction.unknownReactant.formulaTemplate, metal);
+          const molarMass = hideData ? '—' : getUnknownReactantMolarMass(reaction, metal);
           const isOdd = index % 2 === 0;
 
           return (

@@ -1,4 +1,4 @@
-import { type ChangeEvent, type ReactNode } from 'react';
+import { type ReactNode, useRef, useCallback } from 'react';
 import { Beaker, type BeakerProps } from './Beaker';
 import styles from './Beaker.module.scss';
 
@@ -17,6 +17,89 @@ interface FillableBeakerProps extends Omit<BeakerProps, 'liquidLevel'> {
   children?: ReactNode;
 }
 
+interface VerticalSliderProps {
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+  disabled: boolean;
+}
+
+function VerticalSlider({ value, min, max, onChange, disabled }: VerticalSliderProps) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const range = max - min;
+  const fillPct = range === 0 ? 0 : Math.max(0, Math.min(100, ((value - min) / range) * 100));
+  const emptyPct = 100 - fillPct;
+
+  const computeValue = useCallback(
+    (clientY: number): number => {
+      const el = trackRef.current;
+      if (!el) return value;
+      const rect = el.getBoundingClientRect();
+      const fraction = 1 - (clientY - rect.top) / rect.height;
+      const clamped = Math.max(0, Math.min(1, fraction));
+      return parseFloat((min + clamped * range).toFixed(3));
+    },
+    [value, min, range],
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      dragging.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      onChange(computeValue(e.clientY));
+    },
+    [disabled, onChange, computeValue],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragging.current || disabled) return;
+      onChange(computeValue(e.clientY));
+    },
+    [disabled, onChange, computeValue],
+  );
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    dragging.current = false;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  }, []);
+
+  return (
+    <div
+      ref={trackRef}
+      className={`${styles.sliderZone} ${disabled ? styles.sliderZoneDisabled : ''}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      role="slider"
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value}
+      aria-label="Water level"
+      tabIndex={disabled ? -1 : 0}
+    >
+      {/* Two-tone vertical track: gray above thumb, orange below */}
+      <div className={styles.sliderRail}>
+        <div className={styles.sliderRailGray} style={{ flex: Math.max(0.001, emptyPct) }} />
+        <div className={styles.sliderRailOrange} style={{ flex: Math.max(0.001, fillPct) }} />
+      </div>
+
+      {/* Thumb + value label, positioned at the correct Y along the track */}
+      <div
+        className={styles.sliderThumbRow}
+        style={{ top: `${emptyPct}%` }}
+      >
+        <span className={styles.sliderValueLabel}>{value.toFixed(3)}L</span>
+        <div className={styles.sliderThumb} />
+      </div>
+    </div>
+  );
+}
+
 export function FillableBeaker({
   waterLevel,
   onWaterLevelChange,
@@ -28,23 +111,15 @@ export function FillableBeaker({
 }: FillableBeakerProps) {
   const resolvedWaterLevel = Math.max(minWaterLevel, Math.min(maxWaterLevel, waterLevel));
 
-  const handleSliderChange = (e: ChangeEvent<HTMLInputElement>) => {
-    onWaterLevelChange(parseFloat(e.target.value));
-  };
-
   return (
     <div className={styles.fillableWrapper}>
       <div className={styles.sliderTrack}>
-        <input
-          type="range"
+        <VerticalSlider
+          value={resolvedWaterLevel}
           min={minWaterLevel}
           max={maxWaterLevel}
-          step={0.01}
-          value={resolvedWaterLevel}
-          onChange={handleSliderChange}
+          onChange={onWaterLevelChange}
           disabled={disabled}
-          className={styles.verticalSlider}
-          aria-label="Water level"
         />
       </div>
       <Beaker {...beakerProps} liquidLevel={resolvedWaterLevel}>

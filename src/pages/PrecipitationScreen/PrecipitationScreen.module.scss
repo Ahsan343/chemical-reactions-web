@@ -74,7 +74,8 @@
   overflow: visible;
   position: relative;
   z-index: 2;
-  margin-left: 40px;
+  /* 80px slider zone + (240px beaker width / 2) - (94px containers width / 2) = 153px */
+  margin-left: 153px;
 }
 
 .beakerScalesRow {
@@ -133,7 +134,7 @@
   border-radius: 6px;
   padding: 4px 10px;
   align-self: flex-start;
-  margin-left: 40px;
+  margin-left: 153px;
   margin-bottom: 2px;
 }
 
@@ -223,49 +224,8 @@
 }
 
 .chartPlaceholder {
-  width: 100%;
-  max-width: 320px;
-  min-height: 160px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 10px;
-}
-
-.chartTitle {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgb(80, 80, 80);
-  letter-spacing: 0.3px;
-}
-
-.chartBars {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 28px;
-  height: 170px;
-  width: 100%;
-  border: 2px solid rgb(40, 40, 40);
-  padding: 8px 20px;
-  box-sizing: border-box;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.chartBar {
-  width: 24px;
-  border-radius: 50%;
-  transition: height 0.5s ease;
-}
-
-.chartLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgb(60, 60, 60);
-  text-align: center;
+  width: 160px;
+  flex-shrink: 0;
 }
 
 /* Right column: equations + BeakyBox */

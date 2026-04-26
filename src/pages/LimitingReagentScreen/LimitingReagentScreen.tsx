@@ -396,7 +396,7 @@ export default function LimitingReagentScreen() {
     if (exploreMode) return new Set();
     switch (state.inputPhase) {
       case 'selectReaction':
-        return new Set<HighlightTarget>(['selectReaction']);
+        return new Set<HighlightTarget>(['selectReaction', 'beakerSlider']);
       case 'introPhysicalStates':
         return new Set<HighlightTarget>(['reactionDefinitionStates']);
       case 'setWaterLevel':
@@ -474,7 +474,7 @@ export default function LimitingReagentScreen() {
     <div className={styles.screen}>
       <LeftSidebar />
       <RightActionButtons
-        onPlay={state.canGoNext ? state.next : undefined}
+        onPlay={hasReaction ? state.next : undefined}
         onUndo={hasReaction ? state.reset : undefined}
         playActive={state.canGoNext && state.inputPhase !== 'selectReaction'}
         playDisabled={!state.canGoNext}
@@ -554,7 +554,7 @@ export default function LimitingReagentScreen() {
                 minWaterLevel={MIN_WATER_LEVEL}
                 disabled={exploreMode ? !hasReaction || state.isReacting : state.inputPhase !== 'setWaterLevel'}
                 liquidColor="rgb(192, 224, 224)"
-                width={280}
+                width={320}
               >
                 <BeakerMoleculeGrid
                   molecules={state.allMolecules}
@@ -591,25 +591,23 @@ export default function LimitingReagentScreen() {
           </HighlightOverlay>
         </div>
 
-        {/* Right: chart aligned to bottom of beaker */}
-        {hasReaction && (state.moleculeCounts.limiting > 0 || state.moleculeCounts.excess > 0 || state.reactionProgress > 0) && (
-          <div className={styles.progressArea}>
-            <ProgressChart
-              progress={state.reactionProgress}
-              reactantColor={state.selectedReaction!.limitingReactant.color}
-              excessColor={state.selectedReaction!.excessReactant.color}
-              productColor={state.selectedReaction!.product.color}
-              limitingLabel={state.selectedReaction!.limitingReactant.formula}
-              excessLabel={state.selectedReaction!.excessReactant.formula}
-              productLabel={state.selectedReaction!.product.formula}
-              limitingCount={state.moleculeCounts.limiting}
-              excessCount={state.moleculeCounts.excess + state.extraExcessCount}
-              limitingCoefficient={1}
-              excessCoefficient={state.selectedReaction!.excessReactant.coefficient}
-              maxCount={30}
-            />
-          </div>
-        )}
+        {/* Right: chart always visible; empty columns before a reaction is selected */}
+        <div className={styles.progressArea}>
+          <ProgressChart
+            progress={state.reactionProgress}
+            reactantColor={state.selectedReaction?.limitingReactant.color ?? '#aaa'}
+            excessColor={state.selectedReaction?.excessReactant.color ?? '#888'}
+            productColor={state.selectedReaction?.product.color ?? '#999'}
+            limitingLabel={state.selectedReaction?.limitingReactant.formula ?? ''}
+            excessLabel={state.selectedReaction?.excessReactant.formula ?? ''}
+            productLabel={state.selectedReaction?.product.formula ?? ''}
+            limitingCount={state.moleculeCounts.limiting}
+            excessCount={state.moleculeCounts.excess + state.extraExcessCount}
+            limitingCoefficient={1}
+            excessCoefficient={state.selectedReaction?.excessReactant.coefficient ?? 1}
+            maxCount={30}
+          />
+        </div>
       </div>
 
       {/* BeakyBox — bottom right */}

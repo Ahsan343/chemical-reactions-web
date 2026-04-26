@@ -215,7 +215,8 @@ export function useLimitingReagentState(exploreMode = false) {
     setProductDots([]);
     setExtraExcessDots([]);
     setExtraExcessCount(0);
-    setEquationState('blank');
+    // Show equations immediately as soon as a substance is selected
+    setEquationState('theoretical');
     setReactionProgress(0);
     setIsReacting(false);
     // In explore mode, skip educational intro

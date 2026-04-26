@@ -27,6 +27,7 @@ import { type TextLine } from "../../components/shared/guide/useGuideStore";
 import MetalTable from "../../components/precipitation/MetalTable/MetalTable";
 import PrecipitateShape from "../../components/precipitation/PrecipitateShape/PrecipitateShape";
 import BeakerToggle from "../../components/precipitation/BeakerToggle/BeakerToggle";
+import ProgressChart from "../../components/limiting-reagent/ProgressChart/ProgressChart";
 
 import styles from "./PrecipitationScreen.module.scss";
 
@@ -560,7 +561,7 @@ export default function PrecipitationScreen() {
     <div className={styles.screen}>
       <LeftSidebar />
       <RightActionButtons
-        onPlay={state.canGoNext ? state.next : undefined}
+        onPlay={hasReaction ? state.next : undefined}
         onUndo={hasReaction ? state.runReactionAgain : undefined}
         playActive={state.canGoNext && state.phase !== "chooseReaction"}
         playDisabled={!state.canGoNext}
@@ -698,6 +699,7 @@ export default function PrecipitationScreen() {
                     ? !hasReaction || isReactionPhase
                     : state.phase !== "setWaterLevel"
                 }
+                liquidColor="rgb(192, 224, 224)"
                 width={240}
               >
                 {state.beakerView === "microscopic" ? (
@@ -740,10 +742,7 @@ export default function PrecipitationScreen() {
                 ) : null}
               </FillableBeaker>
 
-              {/* Volume label next to slider (blueprint: "0.100L" style) */}
-              <div className={styles.volumeLabel}>
-                {state.waterLevel.toFixed(3)}L
-              </div>
+
 
               {/* iOS "Run again?" button — shown after reactions complete */}
               {state.showRunAgain && (
@@ -798,232 +797,28 @@ export default function PrecipitationScreen() {
                 reaction={state.reactions[0]}
                 revealedMetal={null}
                 showHighlight={false}
+                hideData
               />
             )}
           </div>
 
-          {hasReaction &&
-          (state.knownMoleculeCount > 0 || state.unknownMoleculeCount > 0) ? (
-            <div className={styles.chartPlaceholder}>
-              <div className={styles.chartBars}>
-                {(() => {
-                  const maxMol = 40;
-                  const maxDots = 10;
-                  const scale = maxMol > 0 ? maxDots / maxMol : 0;
-                  const p = Math.min(1, Math.max(0, state.reactionProgress));
-                  // During pouring (addUnknown/addExtraUnknown) and post-reaction phases,
-                  // use stoichiometric counts so the chart updates in real-time.
-                  const isPouring =
-                    state.phase === "addUnknown" ||
-                    state.phase === "addExtraUnknown";
-                  const isPostReaction = [
-                    "endReaction1",
-                    "endReaction2",
-                    "postWeighing",
-                    "revealMetal",
-                    "complete",
-                  ].includes(state.phase);
-                  const useStoichiometric =
-                    (isPouring || isPostReaction) &&
-                    state.unknownMoleculeCount > 0;
-
-                  let krDots: number, urDots: number, prDots: number;
-                  if (useStoichiometric) {
-                    const productsFormed = Math.min(
-                      state.knownMoleculeCount,
-                      state.unknownMoleculeCount,
-                    );
-                    const knownRemaining =
-                      state.knownMoleculeCount - productsFormed;
-                    const unknownExcess = Math.max(
-                      0,
-                      state.unknownMoleculeCount - state.knownMoleculeCount,
-                    );
-                    krDots = Math.min(
-                      maxDots,
-                      Math.round(knownRemaining * scale),
-                    );
-                    urDots = Math.min(
-                      maxDots,
-                      Math.round(unknownExcess * scale),
-                    );
-                    prDots = Math.min(
-                      maxDots,
-                      Math.round(productsFormed * scale),
-                    );
-                  } else {
-                    // Progress-based (animation replay)
-                    krDots =
-                      state.knownMoleculeCount > 0
-                        ? Math.min(
-                            maxDots,
-                            Math.max(
-                              0,
-                              Math.round(
-                                state.knownMoleculeCount * scale * (1 - p),
-                              ),
-                            ),
-                          )
-                        : 0;
-                    urDots =
-                      state.unknownMoleculeCount > 0
-                        ? Math.min(
-                            maxDots,
-                            Math.max(
-                              0,
-                              Math.round(
-                                state.unknownMoleculeCount * scale * (1 - p),
-                              ),
-                            ),
-                          )
-                        : 0;
-                    prDots =
-                      state.knownMoleculeCount > 0 &&
-                      state.unknownMoleculeCount > 0
-                        ? Math.min(
-                            maxDots,
-                            Math.round(
-                              Math.min(
-                                state.knownMoleculeCount,
-                                state.unknownMoleculeCount,
-                              ) *
-                                scale *
-                                p,
-                            ),
-                          )
-                        : 0;
-                  }
-                  const molSize = 12;
-                  return (
-                    <>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column-reverse",
-                          alignItems: "center",
-                          gap: 3,
-                        }}
-                      >
-                        {Array.from({ length: krDots }).map((_, i) => (
-                          <div
-                            key={`kr-${i}`}
-                            style={{
-                              width: molSize,
-                              height: molSize,
-                              borderRadius: "50%",
-                              backgroundColor:
-                                state.selectedReaction!.knownReactant.color,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column-reverse",
-                          alignItems: "center",
-                          gap: 3,
-                        }}
-                      >
-                        {Array.from({ length: urDots }).map((_, i) => (
-                          <div
-                            key={`ur-${i}`}
-                            style={{
-                              width: molSize,
-                              height: molSize,
-                              borderRadius: "50%",
-                              backgroundColor:
-                                state.selectedReaction!.unknownReactant.color,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column-reverse",
-                          alignItems: "center",
-                          gap: 3,
-                        }}
-                      >
-                        {Array.from({ length: prDots }).map((_, i) => (
-                          <div
-                            key={`pr-${i}`}
-                            style={{
-                              width: molSize,
-                              height: molSize,
-                              borderRadius: "50%",
-                              backgroundColor:
-                                state.selectedReaction!.product.color,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-              <div
-                style={{ display: "flex", gap: 12, justifyContent: "center" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <div
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      backgroundColor:
-                        state.selectedReaction!.knownReactant.color,
-                    }}
-                  />
-                  <span className={styles.chartLabel}>
-                    {state.selectedReaction!.knownReactant.formula}
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <div
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      backgroundColor:
-                        state.selectedReaction!.unknownReactant.color,
-                    }}
-                  />
-                  <span className={styles.chartLabel}>
-                    {state.metalRevealed
-                      ? replaceMetalInFormula(
-                          state.selectedReaction!.unknownReactant
-                            .formulaTemplate,
-                          state.currentMetal,
-                        )
-                      : replaceMetalInFormula(
-                          state.selectedReaction!.unknownReactant
-                            .formulaTemplate,
-                          Metal.Sodium,
-                        ).replace(/Na|Li|K/g, "M")}
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <div
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      backgroundColor: state.selectedReaction!.product.color,
-                    }}
-                  />
-                  <span className={styles.chartLabel}>
-                    {state.selectedReaction!.product.formula}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className={styles.chartPlaceholder}>
-              <div className={styles.chartBars} />
-            </div>
-          )}
+          {/* Chart always visible; empty columns before any substance is selected */}
+          <div className={styles.chartPlaceholder}>
+            <ProgressChart
+              progress={state.reactionProgress}
+              reactantColor={state.selectedReaction?.knownReactant.color ?? '#aaa'}
+              excessColor={state.selectedReaction?.unknownReactant.color ?? '#888'}
+              productColor={state.selectedReaction?.product.color ?? '#999'}
+              limitingLabel={hasReaction ? state.selectedReaction!.knownReactant.formula : ''}
+              excessLabel={hasReaction ? unknownFormulaDisplay : ''}
+              productLabel={hasReaction ? state.selectedReaction!.product.formula : ''}
+              limitingCount={state.knownMoleculeCount}
+              excessCount={state.unknownMoleculeCount}
+              limitingCoefficient={1}
+              excessCoefficient={state.selectedReaction?.unknownReactant.coefficient ?? 1}
+              maxCount={40}
+            />
+          </div>
         </div>
 
         {/* Right column */}
@@ -1275,81 +1070,7 @@ export default function PrecipitationScreen() {
                   </div>
                 </div>
               </>
-            ) : (
-              <>
-                {/* Empty default equation placeholders */}
-                <div className={styles.equationGroup}>
-                  <div className={styles.equationLine}>
-                    <span style={{ fontStyle: "italic" }}>n</span> = V &times;{" "}
-                    <span style={{ fontStyle: "italic" }}>M</span>
-                  </div>
-                  <div className={styles.equationLine}>
-                    <span className={styles.dashedPlaceholder} />
-                    {" = "}
-                    <span className={styles.dashedPlaceholder} />
-                    {" \u00D7 "}
-                    <span className={styles.dashedPlaceholder} />
-                  </div>
-                </div>
-                <div className={styles.equationGroup}>
-                  <div className={styles.equationLine}>
-                    <span style={{ fontStyle: "italic" }}>n</span> ={" "}
-                    <span className={styles.equationFraction}>
-                      <span>
-                        <span style={{ fontStyle: "italic" }}>m</span>
-                      </span>
-                      <span className={styles.fractionLine} />
-                      <span>MM</span>
-                    </span>
-                  </div>
-                  <div className={styles.equationLine}>
-                    <span className={styles.dashedPlaceholder} />
-                    {" = "}
-                    <span className={styles.equationFraction}>
-                      <span className={styles.dashedPlaceholder} />
-                      <span className={styles.fractionLine} />
-                      <span className={styles.dashedPlaceholder} />
-                    </span>
-                  </div>
-                </div>
-                <div className={styles.equationGroup}>
-                  <div className={styles.equationLine}>
-                    <span style={{ fontStyle: "italic" }}>n</span>
-                    <sub>product</sub> ={" "}
-                    <span style={{ fontStyle: "italic" }}>n</span>
-                    <sub>reactant</sub>
-                  </div>
-                  <div className={styles.equationLine}>
-                    <span className={styles.dashedPlaceholder} />
-                    {" = "}
-                    <span className={styles.dashedPlaceholder} />
-                  </div>
-                </div>
-                <div className={styles.equationGroup}>
-                  <div className={styles.equationLine}>
-                    MM ={" "}
-                    <span className={styles.equationFraction}>
-                      <span>
-                        <span style={{ fontStyle: "italic" }}>m</span>
-                      </span>
-                      <span className={styles.fractionLine} />
-                      <span>
-                        <span style={{ fontStyle: "italic" }}>n</span>
-                      </span>
-                    </span>
-                  </div>
-                  <div className={styles.equationLine}>
-                    <span className={styles.dashedPlaceholder} />
-                    {" = "}
-                    <span className={styles.equationFraction}>
-                      <span className={styles.dashedPlaceholder} />
-                      <span className={styles.fractionLine} />
-                      <span className={styles.dashedPlaceholder} />
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
+            ) : null}
           </div>
 
           <div className={styles.bottomBar}>
