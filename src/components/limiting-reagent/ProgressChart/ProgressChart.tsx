@@ -14,6 +14,9 @@ interface ProgressChartProps {
   limitingCoefficient?: number;
   excessCoefficient?: number;
   maxCount: number;
+  /** Hide the colored legend dots + labels below the plot area (used before
+   *  any reaction is selected so empty grey dots don't appear). */
+  showLegend?: boolean;
 }
 
 const MAX_DOTS = 10;
@@ -37,6 +40,7 @@ export default function ProgressChart({
   limitingCoefficient = 1,
   excessCoefficient = 1,
   maxCount,
+  showLegend = true,
 }: ProgressChartProps) {
   const clampedProgress = Math.min(1, Math.max(0, progress));
   const scale = maxCount > 0 ? MAX_DOTS / maxCount : 0;
@@ -175,20 +179,22 @@ export default function ProgressChart({
           )}
         </div>
       </div>
-      <div className={styles.axis}>
-        <div className={styles.axisItem}>
-          <div className={styles.axisCircle} style={{ backgroundColor: reactantColor }} />
-          <span className={styles.axisLabel}>{limitingLabel}</span>
+      {showLegend && (
+        <div className={styles.axis}>
+          <div className={styles.axisItem}>
+            <div className={styles.axisCircle} style={{ backgroundColor: reactantColor }} />
+            <span className={styles.axisLabel}>{limitingLabel}</span>
+          </div>
+          <div className={styles.axisItem}>
+            <div className={styles.axisCircle} style={{ backgroundColor: excessColor }} />
+            <span className={styles.axisLabel}>{excessLabel}</span>
+          </div>
+          <div className={styles.axisItem}>
+            <div className={styles.axisCircle} style={{ backgroundColor: productColor }} />
+            <span className={styles.axisLabel}>{productLabel}</span>
+          </div>
         </div>
-        <div className={styles.axisItem}>
-          <div className={styles.axisCircle} style={{ backgroundColor: excessColor }} />
-          <span className={styles.axisLabel}>{excessLabel}</span>
-        </div>
-        <div className={styles.axisItem}>
-          <div className={styles.axisCircle} style={{ backgroundColor: productColor }} />
-          <span className={styles.axisLabel}>{productLabel}</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

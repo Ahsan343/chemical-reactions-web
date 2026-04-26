@@ -606,6 +606,7 @@ export default function LimitingReagentScreen() {
             limitingCoefficient={1}
             excessCoefficient={state.selectedReaction?.excessReactant.coefficient ?? 1}
             maxCount={30}
+            showLegend={hasReaction}
           />
         </div>
       </div>

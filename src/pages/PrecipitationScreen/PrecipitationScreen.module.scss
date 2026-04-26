@@ -56,11 +56,11 @@
   justify-content: center;
   gap: 6px;
   flex-shrink: 0;
-  width: 420px;
-  min-width: 320px;
+  width: 460px;
+  min-width: 360px;
   min-height: 0;
   align-self: center;
-  padding: 0 12px;
+  padding: 0 12px 0 160px; /* extra left padding pushes beaker right */
   overflow: visible;
 }
 
@@ -221,10 +221,13 @@
   position: relative;
   z-index: 1;
   background: #fff;
+  /* Lifted up 150px so the table sits closer to the equation header,
+     leaving more vertical space between table and chart below. */
+  transform: translateY(-150px);
 }
 
 .chartPlaceholder {
-  width: 160px;
+  width: 260px;
   flex-shrink: 0;
 }
 
@@ -307,9 +310,15 @@
   min-width: 60px;
 }
 
+/* BeakyBox — pulled out of right-column flow and aligned with the
+   beaker + chart baseline (which sit centered in main content area).
+   Mirrors limiting-reagent layout pattern. */
 .bottomBar {
-  flex-shrink: 0;
-  margin-top: 8px;
+  position: absolute;
+  bottom: 280px;
+  right: 180px;
+  z-index: 10;
+  max-width: 400px;
 }
 
 .placeholder {

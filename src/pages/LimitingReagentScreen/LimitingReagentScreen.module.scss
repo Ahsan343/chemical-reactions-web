@@ -46,16 +46,20 @@
   padding: 4px 0 8px;
 }
 
-/* ── CENTER: beaker column + chart side by side, centered ── */
+/* ── CENTER: beaker column on the left, chart in the middle.
+   align-items: flex-end so beaker and chart sit on the same baseline.
+   padding-bottom lifts the whole row up so it doesn't hug the screen edge. */
 .centerArea {
   flex: 1;
   display: flex;
   flex-direction: row;
   align-items: flex-end;
-  justify-content: center;
-  gap: 36px;
+  justify-content: flex-start;
+  gap: 80px;
   min-height: 0;
-  padding-bottom: 60px;
+  padding-bottom: 220px;
+  padding-left: 160px;
+  padding-right: 80px;
 }
 
 /* Left side: bottles stacked above beaker.
@@ -118,11 +122,12 @@
   flex-shrink: 0;
 }
 
-/* ── BeakyBox — bottom right corner ── */
+/* ── BeakyBox — right side, baseline aligned with beaker + chart bottoms.
+   bottom = padding-bottom of centerArea (220px) for matching baseline. */
 .beakyArea {
   position: absolute;
-  bottom: 12px;
-  right: 16px;
+  bottom: 220px;
+  right: 60px;
   z-index: 10;
   max-width: 400px;
 }

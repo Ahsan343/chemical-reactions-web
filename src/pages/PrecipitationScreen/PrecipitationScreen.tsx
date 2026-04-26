@@ -802,8 +802,25 @@ export default function PrecipitationScreen() {
             )}
           </div>
 
-          {/* Chart always visible; empty columns before any substance is selected */}
-          <div className={styles.chartPlaceholder}>
+          {/* Chart — same dim/highlight treatment as the metal table.
+              Bright when beaker is in focus or when no highlights are active
+              (reaction running / completed). Empty columns before any
+              substance is selected. */}
+          <div
+            className={styles.chartPlaceholder}
+            style={
+              state.highlights.length > 0
+                ? state.highlights.includes("beaker") ||
+                  state.highlights.includes("beakerToggle")
+                  ? { transition: "opacity 0.3s ease, filter 0.3s ease" }
+                  : {
+                      opacity: 0.35,
+                      filter: "saturate(0.3)",
+                      transition: "opacity 0.3s ease, filter 0.3s ease",
+                    }
+                : {}
+            }
+          >
             <ProgressChart
               progress={state.reactionProgress}
               reactantColor={state.selectedReaction?.knownReactant.color ?? '#aaa'}
@@ -817,6 +834,7 @@ export default function PrecipitationScreen() {
               limitingCoefficient={1}
               excessCoefficient={state.selectedReaction?.unknownReactant.coefficient ?? 1}
               maxCount={40}
+              showLegend={hasReaction}
             />
           </div>
         </div>
