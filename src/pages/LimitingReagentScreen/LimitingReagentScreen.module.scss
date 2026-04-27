@@ -131,3 +131,33 @@
   z-index: 10;
   max-width: 400px;
 }
+
+/* ── Mobile / tablet overrides (phones + iPads) ────────────────────────────
+   On smaller viewports the equation panel at the top crowds the beaker.
+   Lift everything to the BOTTOM of the canvas (less padding-bottom), pull
+   beaky further left, and tighten the gap. Desktop layout is untouched. */
+@media (max-width: 1024px) {
+  .centerArea {
+    padding-bottom: 40px;
+    padding-left: 60px;
+    padding-right: 40px;
+    gap: 40px;
+  }
+  .beakyArea {
+    bottom: 40px;
+    right: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .centerArea {
+    padding-bottom: 20px;
+    padding-left: 30px;
+    padding-right: 20px;
+    gap: 20px;
+  }
+  .beakyArea {
+    bottom: 20px;
+    right: 20px;
+  }
+}

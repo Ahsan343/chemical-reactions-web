@@ -321,6 +321,53 @@
   max-width: 400px;
 }
 
+/* ── Mobile / tablet overrides ────────────────────────────────────────────
+   On smaller viewports the equation panel + table at the top crowd the
+   beaker. Reduce the desktop "lift" so beaker, chart and beaky drop to
+   the lower part of the canvas, beaker isn't pushed off-screen, and beaky
+   sits closer to the right edge. Desktop layout untouched. */
+/* Mid-desktop range (1025–1445px): default desktop right:180 makes beaky
+   overlap the chart. Pull beaky closer to the right edge ONLY in this band.
+   Touches nothing else. */
+@media (min-width: 1025px) and (max-width: 1445px) {
+  .bottomBar {
+    right: 60px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .leftColumn {
+    padding: 0 12px 0 60px;
+    width: auto;
+  }
+  .tableWrapper {
+    transform: translateY(-60px);
+  }
+  .bottomBar {
+    bottom: 80px;
+    right: 20px;
+  }
+  .chartPlaceholder {
+    width: 200px;
+  }
+}
+
+@media (max-width: 600px) {
+  .leftColumn {
+    padding: 0 8px 0 30px;
+  }
+  .tableWrapper {
+    transform: translateY(-30px);
+  }
+  .bottomBar {
+    bottom: 40px;
+    right: 20px;
+  }
+  .chartPlaceholder {
+    width: 160px;
+  }
+}
+
 .placeholder {
   display: flex;
   align-items: center;

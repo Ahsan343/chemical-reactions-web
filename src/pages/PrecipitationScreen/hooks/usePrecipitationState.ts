@@ -505,11 +505,26 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         return next;
       });
       tagAction('addKnownReactant', 'precipitation', { count });
-    } else if (type === 'unknown' && (phase === 'addUnknown' || phase === 'addExtraUnknown')) {
+    } else if (type === 'unknown' && phase === 'addUnknown') {
+      // First pour: water-volume cap (matches iOS InitialReaction max-fill)
       setUnknownMoleculeCount((prev) => Math.min(prev + count, cap));
       tagAction('addUnknownReactant', 'precipitation', { count });
+    } else if (type === 'unknown' && phase === 'addExtraUnknown') {
+      // Second pour (slide 68): iOS ExtraUnknownReactantPreparation caps at
+      //   unknownReactantCoeff * leftoverKnown
+      // (the exact stoichiometric amount needed to consume all remaining known
+      // reactant). Without this, our previous water-volume cap would silently
+      // block pours, breaking the blueprint's "Keep shaking to see it react"
+      // pedagogy. The pour adds to the cumulative `unknownMoleculeCount` so the
+      // chart's `(excessCount − consumed)` formula now reveals the new excess.
+      const coeff = selectedReaction?.unknownReactant.coefficient ?? 1;
+      const leftoverKnown = Math.round(knownMoleculeCount * (1 - reactionProgress));
+      const additionalAllowed = coeff * leftoverKnown;
+      const effectiveCap = unknownMoleculeCount + additionalAllowed;
+      setUnknownMoleculeCount((prev) => Math.min(prev + count, effectiveCap));
+      tagAction('addUnknownReactant', 'precipitation', { count, phase: 'extra' });
     }
-  }, [phase, exploreMode, waterLevel, selectedReaction, productMolecules, knownMoleculeCount, knownMolecules]);
+  }, [phase, exploreMode, waterLevel, selectedReaction, productMolecules, knownMoleculeCount, knownMolecules, reactionProgress, unknownMoleculeCount]);
 
   const canGoNext = useMemo(() => {
     if (exploreMode) {
