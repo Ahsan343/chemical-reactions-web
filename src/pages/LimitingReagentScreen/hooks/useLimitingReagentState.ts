@@ -285,8 +285,13 @@ export function useLimitingReagentState(exploreMode = false) {
       } else {
         persistState(selectedReaction, waterLevel, newCounts, 'addLimiting');
       }
-    } else if (type === 'excess' && inputPhase === 'addExcess') {
+    } else if (type === 'excess' && (inputPhase === 'addExcess' || inputPhase === 'reacting')) {
+      // Ted 4.28 (slide 47): "They can't keep shaking here. It stops."
+      // Auto-advance from addExcess at ~70% of stoichiometric so the user
+      // still has reagent to shake during the reacting animation. Allow
+      // continued pours during 'reacting' up to the full stoichiometric cap.
       const maxExcess = moleculeCounts.limiting * selectedReaction.excessReactant.coefficient;
+      const advanceThreshold = Math.max(1, Math.round(maxExcess * 0.7));
       const newCount = Math.min(moleculeCounts.excess + count, maxExcess);
       const toAdd = newCount - moleculeCounts.excess;
       if (toAdd <= 0) return;
@@ -301,13 +306,15 @@ export function useLimitingReagentState(exploreMode = false) {
       setExcessDots((prev) => [...prev, ...newDots]);
       const newCounts = { ...moleculeCounts, excess: newCount };
       setMoleculeCounts(newCounts);
-      tagAction('addExcess', 'limitingReagent', { count: toAdd, total: newCount });
+      tagAction('addExcess', 'limitingReagent', { count: toAdd, total: newCount, phase: inputPhase });
 
-      if (newCount >= maxExcess) {
+      // Auto-advance to 'reacting' once advanceThreshold reached, so user
+      // can keep shaking the rest during the reaction animation.
+      if (inputPhase === 'addExcess' && newCount >= advanceThreshold) {
         setInputPhase('reacting');
         persistState(selectedReaction, waterLevel, newCounts, 'reacting');
       } else {
-        persistState(selectedReaction, waterLevel, newCounts, 'addExcess');
+        persistState(selectedReaction, waterLevel, newCounts, inputPhase);
       }
     } else if (type === 'excess' && inputPhase === 'addExtraExcess') {
       // Extra excess: molecules go in beaker but don't react (demonstrates limiting concept)
@@ -377,13 +384,30 @@ export function useLimitingReagentState(exploreMode = false) {
       visible.push(...limitingDots);
       visible.push(...excessDots);
     } else {
-      const remainingExcess = excessDots.length - (moleculeCounts.limiting * (selectedReaction?.excessReactant.coefficient ?? 1));
-      if (remainingExcess > 0) {
-        visible.push(...excessDots.slice(-remainingExcess));
-      }
+      // Ted 4.28 / slide 48: at end of reaction retain a small unreacted
+      // remainder of EACH reactant so the next slide (yield percentage =
+      // ~96-98%) makes physical sense — "real life doesn't get 100%". The
+      // amount retained = (1 - yield) of theoretical, with a floor of 1
+      // molecule each so it's always visible.
+      const yieldFraction = selectedReaction?.yield ?? 0.98;
+      const unreactedFraction = Math.max(0, 1 - yieldFraction);
+      const limitingLeftover = Math.max(1, Math.round(moleculeCounts.limiting * unreactedFraction));
+      const excessLeftover = Math.max(1, Math.round(
+        moleculeCounts.limiting * (selectedReaction?.excessReactant.coefficient ?? 1) * unreactedFraction
+      ));
+      // Show the trailing N limiting dots and N excess dots (from end of array)
+      visible.push(...limitingDots.slice(-Math.min(limitingLeftover, limitingDots.length)));
+      const stoichiometricExcess = moleculeCounts.limiting * (selectedReaction?.excessReactant.coefficient ?? 1);
+      const trueExtraExcess = excessDots.length - stoichiometricExcess; // poured beyond stoichiometric
+      const totalExcessVisible = Math.max(0, trueExtraExcess) + excessLeftover;
+      visible.push(...excessDots.slice(-Math.min(totalExcessVisible, excessDots.length)));
     }
 
-    const visibleProductCount = Math.floor(productDots.length * reactionProgress);
+    // Products: at progress=1, show yield-fraction (not 100%) so visible
+    // count matches the "actual yield" pedagogy.
+    const yieldFraction = selectedReaction?.yield ?? 1;
+    const productScale = reactionProgress < 1 ? reactionProgress : yieldFraction;
+    const visibleProductCount = Math.floor(productDots.length * productScale);
     visible.push(...productDots.slice(0, visibleProductCount));
 
     // Show extra excess dots (from addExtraExcess phase - unreacted)

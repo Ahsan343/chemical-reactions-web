@@ -700,10 +700,12 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       case 'addExtraUnknown':
         // 3-step animation: enter reaction2 phase and animate progress 0.5→1.0
         // (continuing from the first reaction's halfway-completed state) before
-        // landing on endReaction2.
+        // landing on endReaction2. Auto-switch to macroscopic at the end so
+        // students see the solid precipitate (Ted comment 4.28 / slide 70).
         setPhase('reaction2');
         animateReaction(0.5, 1.0, 3000, () => {
           setPhase('endReaction2');
+          setBeakerView('macroscopic');
           tagAction('reactionComplete', 'precipitation', { reaction: 2 });
         });
         tagAction('startReaction', 'precipitation', { reaction: 2 });
@@ -712,6 +714,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         if (reactionAnimRef.current) cancelAnimationFrame(reactionAnimRef.current);
         setReactionProgress(1.0);
         setPhase('endReaction2');
+        setBeakerView('macroscopic'); // Ted 4.28 / slide 70
         break;
 
       // Post reaction2

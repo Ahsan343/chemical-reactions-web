@@ -379,8 +379,12 @@ export default function LimitingReagentScreen() {
     ? (hasReaction && !state.isReacting)
     : state.inputPhase === 'addLimiting';
   const excessActive = exploreMode
-    ? (hasReaction && !state.isReacting)
-    : (state.inputPhase === 'addExcess' || state.inputPhase === 'addExtraExcess');
+    ? hasReaction
+    // Ted 4.28 / slide 47: keep excess container active during 'reacting' so
+    // student can continue shaking through the reaction animation.
+    : (state.inputPhase === 'addExcess'
+        || state.inputPhase === 'reacting'
+        || state.inputPhase === 'addExtraExcess');
 
   // --- iOS parity: per-step highlight targets (mirrors ScreenElement enum) ---
   // In explore mode or complete/no-highlight steps, nothing is dimmed (all highlighted).
