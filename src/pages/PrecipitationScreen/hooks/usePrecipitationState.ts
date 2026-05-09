@@ -30,6 +30,11 @@ type Phase =
   | 'revealMetal'
   | 'addExtraUnknown'
   | 'reaction2'
+  // Ted 5.5.26 video bug #3: pause checkpoint between partial reaction and
+  // completion. Reaction2 animates from 0.5 → 0.85 (showing precipitate
+  // forming), holds at this phase, then on user-clicked Next animates
+  // 0.85 → 1.0 and lands on endReaction2.
+  | 'reaction2Paused'
   // Post-reaction2 (iOS step 14)
   | 'endReaction2'
   | 'complete'
@@ -78,6 +83,7 @@ function getHighlightsForPhase(phase: Phase): HighlightElement[] {
       return ['unknownReactantContainer', 'beaker'];
     case 'reaction1':
     case 'reaction2':
+    case 'reaction2Paused':
       return []; // cleared — everything bright
     case 'endReaction1':
     case 'endReaction2':
@@ -414,9 +420,11 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       return stoichiometric();
     }
 
-    // Animation phases (reaction1 / reaction2): progress-based interpolation
-    // from all-reactants (p=0) → stoichiometric result (p=1)
-    if (phase === 'reaction1' || phase === 'reaction2') {
+    // Animation phases (reaction1 / reaction2 / reaction2Paused):
+    // progress-based interpolation from all-reactants (p=0) → stoichiometric
+    // result (p=1). reaction2Paused holds at p≈0.85 so the partial precipitate
+    // stays visible while the user reads Beaky's prompt to click Next.
+    if (phase === 'reaction1' || phase === 'reaction2' || phase === 'reaction2Paused') {
       const p = Math.min(1, Math.max(0, reactionProgress));
       if (p === 0) return [...knownMolecules, ...unknownMolecules];
 
@@ -565,8 +573,14 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       case 'addExtraUnknown':
         return unknownMoleculeCount >= MIN_MOLECULES;
       case 'reaction1':
+        return reactionProgress >= 0.5;
       case 'reaction2':
-        return reactionProgress >= (phase === 'reaction1' ? 0.5 : 1.0);
+        // reaction2 only auto-advances; user-controlled Next happens at
+        // reaction2Paused below (Ted 5.5.26 #3).
+        return reactionProgress >= 0.85;
+      case 'reaction2Paused':
+        // Pause checkpoint — user can always click Next here.
+        return true;
       case 'revealMetal':
         return true;
       case 'complete':
@@ -698,23 +712,40 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         tagAction('revealMetal', 'precipitation', { metal: currentMetal });
         break;
       case 'addExtraUnknown':
-        // 3-step animation: enter reaction2 phase and animate progress 0.5→1.0
-        // (continuing from the first reaction's halfway-completed state) before
-        // landing on endReaction2. Auto-switch to macroscopic at the end so
-        // students see the solid precipitate (Ted comment 4.28 / slide 70).
+        // Ted 5.5.26 video bug #3: animate the second reaction PARTIALLY
+        // (0.5 → 0.85) and PAUSE — students need a moment to actually see
+        // the precipitate forming. Then on Next click, the reaction2Paused
+        // case below finishes 0.85 → 1.0 and lands on endReaction2.
+        //
+        // Previous behavior animated straight to 1.0 in one shot; Ted's
+        // feedback: "this moves too fast, they can't do it … make it react
+        // part of the way and show this green, and then let them hit Next,
+        // and then they go to done."
         setPhase('reaction2');
-        animateReaction(0.5, 1.0, 3000, () => {
-          setPhase('endReaction2');
-          setBeakerView('macroscopic');
-          tagAction('reactionComplete', 'precipitation', { reaction: 2 });
+        animateReaction(0.5, 0.85, 2400, () => {
+          setPhase('reaction2Paused');
+          tagAction('reactionPause', 'precipitation', { reaction: 2 });
         });
         tagAction('startReaction', 'precipitation', { reaction: 2 });
         break;
       case 'reaction2':
+        // Skip the running animation and jump straight to the pause point
+        // so the user can still hit Next to finish manually (matches the
+        // Ted 5.5.26 #3 fix above).
         if (reactionAnimRef.current) cancelAnimationFrame(reactionAnimRef.current);
-        setReactionProgress(1.0);
-        setPhase('endReaction2');
-        setBeakerView('macroscopic'); // Ted 4.28 / slide 70
+        setReactionProgress(0.85);
+        setPhase('reaction2Paused');
+        break;
+      case 'reaction2Paused':
+        // Ted 5.5.26 #3: user clicked Next on the partial-reaction view —
+        // finish animating 0.85 → 1.0 and land on endReaction2 with the
+        // macroscopic view auto-selected (Ted 4.28 / slide 70).
+        setPhase('reaction2');
+        animateReaction(0.85, 1.0, 1500, () => {
+          setPhase('endReaction2');
+          setBeakerView('macroscopic');
+          tagAction('reactionComplete', 'precipitation', { reaction: 2 });
+        });
         break;
 
       // Post reaction2
@@ -807,6 +838,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         break;
       case 'reaction1':
       case 'reaction2':
+      case 'reaction2Paused':
         // Cancel any in-flight animation and step back to the appropriate
         // pour phase so the user can redo the add.
         if (reactionAnimRef.current) cancelAnimationFrame(reactionAnimRef.current);
@@ -816,6 +848,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
           setReactionProgress(0);
           setProductMolecules([]);
         } else {
+          // reaction2 and reaction2Paused both rewind to addExtraUnknown.
           setPhase('addExtraUnknown');
           setReactionProgress(0.5);
         }

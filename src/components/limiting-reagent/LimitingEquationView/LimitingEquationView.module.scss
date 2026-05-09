@@ -82,9 +82,12 @@
   margin-top: -2px;
 }
 
+/* Ted 5.5.26 #1: yield/equation values were too thin/light to read.
+   Deepen the orange and bump weight to 700 so values stand out clearly
+   against the white background. */
 .orangeValue {
-  color: rgb(220, 84, 59);
-  font-weight: 600;
+  color: rgb(180, 60, 38);
+  font-weight: 700;
 }
 
 .placeholder {
@@ -93,11 +96,11 @@
   justify-content: center;
   min-width: 44px;
   height: 24px;
-  border: 1.5px solid rgb(220, 84, 59);
+  border: 1.5px solid rgb(180, 60, 38);
   border-radius: 4px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
-  color: rgb(220, 84, 59);
+  color: rgb(180, 60, 38);
   padding: 0 4px;
 }
 

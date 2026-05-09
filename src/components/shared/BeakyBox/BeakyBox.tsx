@@ -18,6 +18,25 @@ interface BeakyBoxProps {
 // iOS emphasis color (CorePalette.orangeAccent = rgb(220,84,59))
 const EMPHASIS_COLOR = 'rgb(220, 84, 59)';
 
+/**
+ * Ted 5.5.26 video bug #1: yellow/light molecule colors used inside Beaky's
+ * speech bubble (e.g. Na2C2O4 = rgb(240,208,112)) are too low-contrast against
+ * the light gray bubble background. Darken the rgb channels by ~30% so the
+ * inline chemistry compound names stay readable as text, while keeping the
+ * original lighter palette for beaker dot rendering. Also bold colored
+ * segments per Ted's explicit ask ("bold them or something").
+ */
+function darkenForReadability(color: string): string {
+  // Match "rgb(r, g, b)" — return darker variant. Pass through other formats unchanged.
+  const m = /^\s*rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)\s*$/i.exec(color);
+  if (!m) return color;
+  const factor = 0.55; // ~45% darker — enough for low-contrast pales like yellow
+  const r = Math.round(parseInt(m[1], 10) * factor);
+  const g = Math.round(parseInt(m[2], 10) * factor);
+  const b = Math.round(parseInt(m[3], 10) * factor);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 function renderSegment(segment: TextSegment, index: number, fontSize: number) {
   let content: React.ReactNode = segment.text;
 
@@ -36,10 +55,22 @@ function renderSegment(segment: TextSegment, index: number, fontSize: number) {
   // iOS: emphasis is ONLY a color change to orange — same .regular font weight.
   // The `bold` flag in our TextSegment maps to iOS "emphasised" (color, not weight).
   const emphasisColor = segment.bold ? EMPHASIS_COLOR : undefined;
-  const color = segment.color ?? emphasisColor;
+  const rawColor = segment.color ?? emphasisColor;
+
+  // Ted 5.5.26 #1: chemistry compound names (e.g. Na2C2O4 in light yellow)
+  // are unreadable in the bubble. Darken non-emphasis (molecule-palette)
+  // colors and bold all colored segments so they stand out as readable text.
+  const isMoleculeColor = !!segment.color && segment.color !== EMPHASIS_COLOR;
+  const color = isMoleculeColor && rawColor
+    ? darkenForReadability(rawColor)
+    : rawColor;
+
+  const style: React.CSSProperties = {};
+  if (color) style.color = color;
+  if (color) style.fontWeight = 700;
 
   return (
-    <span key={index} style={color ? { color } : undefined}>
+    <span key={index} style={Object.keys(style).length ? style : undefined}>
       {content}
     </span>
   );

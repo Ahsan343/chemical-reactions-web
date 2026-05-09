@@ -386,13 +386,19 @@ export function useLimitingReagentState(exploreMode = false) {
     } else {
       // Ted 4.28 / slide 48: at end of reaction retain a small unreacted
       // remainder of EACH reactant so the next slide (yield percentage =
-      // ~96-98%) makes physical sense — "real life doesn't get 100%". The
-      // amount retained = (1 - yield) of theoretical, with a floor of 1
-      // molecule each so it's always visible.
+      // ~96-98%) makes physical sense — "real life doesn't get 100%".
+      //
+      // Ted 5.5.26 video bug #2: with floor=1, the single limiting dot was
+      // visually invisible — it landed in a corner and its pale teal blended
+      // with the beaker's blue tint. Bump leftover floor to 3 dots so users
+      // can clearly see at least one of EACH color (limiting + excess)
+      // remaining, matching Ted's request: "ideally there should be one
+      // green left … you have purple but not green."
       const yieldFraction = selectedReaction?.yield ?? 0.98;
       const unreactedFraction = Math.max(0, 1 - yieldFraction);
-      const limitingLeftover = Math.max(1, Math.round(moleculeCounts.limiting * unreactedFraction));
-      const excessLeftover = Math.max(1, Math.round(
+      const LEFTOVER_FLOOR = 3;
+      const limitingLeftover = Math.max(LEFTOVER_FLOOR, Math.round(moleculeCounts.limiting * unreactedFraction));
+      const excessLeftover = Math.max(LEFTOVER_FLOOR, Math.round(
         moleculeCounts.limiting * (selectedReaction?.excessReactant.coefficient ?? 1) * unreactedFraction
       ));
       // Show the trailing N limiting dots and N excess dots (from end of array)

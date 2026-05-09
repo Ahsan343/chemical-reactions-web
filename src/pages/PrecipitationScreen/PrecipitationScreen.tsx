@@ -424,6 +424,27 @@ function getGuideStatement(
         ],
       ];
 
+    // Ted 5.5.26 video bug #3: pause checkpoint between partial reaction
+    // and completion. Reaction is ~85% done, precipitate visibly forming.
+    case "reaction2Paused":
+      return [
+        [
+          { text: "The reaction is happening right now — take a moment to see the " },
+          {
+            text: state.selectedReaction?.product.formula ?? "precipitate",
+            bold: true,
+            color: state.selectedReaction?.product.color,
+          },
+          { text: " forming in the beaker." },
+        ],
+        [
+          {
+            text: "Tap Next when you're ready to finish the reaction.",
+            bold: true,
+          },
+        ],
+      ];
+
     // Post-reaction2 (blueprint slide 70)
     case "endReaction2":
       return [

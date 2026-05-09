@@ -92,12 +92,18 @@ export default function ShakingContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pouring, pourKey]);
 
-  const pourCallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Bug fix (5.5.26 follow-up): rapid clicks must each produce molecules.
+  // Previously a single ref tracked the pending onPour() timeout and each
+  // new click cancelled the previous one, so 3–4 clicks collapsed into a
+  // single pour. Now we keep an array of pending timeouts; each click
+  // schedules its own onPour() callback that fires independently.
+  const pendingPoursRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
   useEffect(() => {
     return () => {
       if (pourTimerRef.current) clearTimeout(pourTimerRef.current);
-      if (pourCallbackRef.current) clearTimeout(pourCallbackRef.current);
+      pendingPoursRef.current.forEach((t) => clearTimeout(t));
+      pendingPoursRef.current = [];
     };
   }, []);
 
@@ -108,9 +114,18 @@ export default function ShakingContainer({
       setPositioned(true);
       return;
     }
-    // Delay molecule appearance until particles reach the water surface
-    if (pourCallbackRef.current) clearTimeout(pourCallbackRef.current);
-    pourCallbackRef.current = setTimeout(() => onPour(), 420);
+    // Schedule THIS click's onPour delivery independently. The 420ms delay
+    // is purely visual (lets the falling particles reach the water surface
+    // before the molecule appears in the beaker) — it should not block
+    // subsequent clicks. We track the timeout so it gets cleared on unmount.
+    const t = setTimeout(() => {
+      onPour();
+      pendingPoursRef.current = pendingPoursRef.current.filter((x) => x !== t);
+    }, 420);
+    pendingPoursRef.current.push(t);
+
+    // Visual layer: re-key particles so each click spawns a fresh batch
+    // (overlapping batches render correctly because each has unique keys).
     setPourKey((k) => k + 1);
     setPouring(true);
     if (pourTimerRef.current) clearTimeout(pourTimerRef.current);
