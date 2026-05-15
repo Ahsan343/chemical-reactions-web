@@ -9,6 +9,8 @@ interface MoleculeDot {
   y: number;
   /** Optional opacity (0-1) for fade transitions during reactions */
   opacity?: number;
+  /** Optional stacking order */
+  zIndex?: number;
 }
 
 interface BeakerMoleculeGridProps {
@@ -38,6 +40,7 @@ export function BeakerMoleculeGrid({
             height: dotSize,
             backgroundColor: mol.color,
             opacity: mol.opacity !== undefined ? mol.opacity : undefined,
+            zIndex: mol.zIndex,
             transition: mol.opacity !== undefined ? 'opacity 0.3s ease' : undefined,
             animationDelay: animated ? `${i * 30}ms` : undefined,
           }}

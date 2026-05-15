@@ -563,7 +563,7 @@ export default function LimitingReagentScreen() {
                 <BeakerMoleculeGrid
                   molecules={state.allMolecules}
                   dotSize={10}
-                  animated
+                  animated={false}
                 />
               </FillableBeaker>
               {hasReaction && state.selectedReaction && (

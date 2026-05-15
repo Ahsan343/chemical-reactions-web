@@ -726,7 +726,7 @@ export default function PrecipitationScreen() {
                 {state.beakerView === "microscopic" ? (
                   <BeakerMoleculeGrid
                     molecules={state.reactionMolecules}
-                    animated
+                    animated={false}
                   />
                 ) : /* Macroscopic view: show precipitate inside beaker */
                 hasReaction && state.reactionProgress > 0 ? (

@@ -137,6 +137,33 @@ function generateRandomPositions(
   return result;
 }
 
+function getIndicatorPositions(count: number, waterLevel: number, existingPositions: MoleculeDot[] = []) {
+  const result: MoleculeDot[] = [];
+  const occupied = new Set(existingPositions.map((p) => `${Math.round(p.x * GRID_COLS)},${Math.round(p.y * GRID_ROWS)}`));
+  const surfaceRow = Math.floor(GRID_ROWS * (1 - Math.min(1, Math.max(0, waterLevel))));
+  const minRow = Math.min(surfaceRow + 1, GRID_ROWS - 1);
+  const maxRow = Math.min(minRow + 2, GRID_ROWS - 1);
+
+  for (let i = 0; i < count; i += 1) {
+    let attempts = 0;
+    let col: number;
+    let row: number;
+    do {
+      col = 11 + Math.floor(Math.random() * 6); // right side of beaker
+      row = minRow + Math.floor(Math.random() * (maxRow - minRow + 1));
+      attempts += 1;
+    } while (occupied.has(`${col},${row}`) && attempts < 100);
+    occupied.add(`${col},${row}`);
+    result.push({
+      color: '',
+      x: (col + 0.5) / GRID_COLS,
+      y: (row + 0.5) / GRID_ROWS,
+    });
+  }
+
+  return result;
+}
+
 export function useLimitingReagentState(exploreMode = false) {
   // Always start fresh — molecule dots aren't persisted so restoring
   // mid-experiment state produces a broken view (counts & equations filled
@@ -346,10 +373,48 @@ export function useLimitingReagentState(exploreMode = false) {
 
     const allDots = [...limitingDots, ...excessDots].sort(() => Math.random() - 0.5);
     const productCount = Math.min(limitingDots.length, Math.floor(excessDots.length / selectedReaction.excessReactant.coefficient));
-    const newProductDots = allDots.slice(0, productCount).map((d) => ({
-      ...d,
-      color: selectedReaction.product.color,
-    }));
+    // Pick the first N underlying dots as product seeds
+    const picked = allDots.slice(0, productCount);
+
+    const indicatorPositions = getIndicatorPositions(
+      2,
+      waterLevel,
+      [...limitingDots, ...excessDots, ...productDots, ...extraExcessDots],
+    );
+
+    // Apply enforced coloring: first = limiting color, second = excess color, rest = product color.
+    const newProductDots = picked.map((d, index) => {
+      const dotColor = index === 0
+        ? selectedReaction.limitingReactant.color
+        : index === 1
+          ? selectedReaction.excessReactant.color
+          : selectedReaction.product.color;
+      const position = index < 2 ? indicatorPositions[index] : { x: d.x, y: d.y };
+      return {
+        ...d,
+        color: dotColor,
+        x: position.x,
+        y: position.y,
+        zIndex: index < 2 ? 2 : 1,
+      };
+    });
+
+    if (productCount < 2) {
+      const missing = 2 - productCount;
+      for (let i = 0; i < missing; i += 1) {
+        const dotIndex = productCount + i;
+        const dotColor = dotIndex === 0
+          ? selectedReaction.limitingReactant.color
+          : selectedReaction.excessReactant.color;
+        const position = indicatorPositions[dotIndex];
+        newProductDots.push({
+          color: dotColor,
+          x: position.x,
+          y: position.y,
+          zIndex: 2,
+        });
+      }
+    }
 
     setProductDots(newProductDots);
 
@@ -375,7 +440,7 @@ export function useLimitingReagentState(exploreMode = false) {
         tagAction('reactionComplete', 'limitingReagent', { reactionId: selectedReaction.id });
       }
     }, REACTION_TICK_MS);
-  }, [selectedReaction, isReacting, inputPhase, limitingDots, excessDots, waterLevel, moleculeCounts, persistState, exploreMode]);
+  }, [selectedReaction, isReacting, inputPhase, limitingDots, excessDots, productDots, extraExcessDots, waterLevel, moleculeCounts, persistState, exploreMode]);
 
   const allMolecules = useMemo((): MoleculeDot[] => {
     const visible: MoleculeDot[] = [];
@@ -383,44 +448,44 @@ export function useLimitingReagentState(exploreMode = false) {
     if (reactionProgress < 1) {
       visible.push(...limitingDots);
       visible.push(...excessDots);
-    } else {
-      // Ted 4.28 / slide 48: at end of reaction retain a small unreacted
-      // remainder of EACH reactant so the next slide (yield percentage =
-      // ~96-98%) makes physical sense — "real life doesn't get 100%".
-      //
-      // Ted 5.5.26 video bug #2: with floor=1, the single limiting dot was
-      // visually invisible — it landed in a corner and its pale teal blended
-      // with the beaker's blue tint. Bump leftover floor to 3 dots so users
-      // can clearly see at least one of EACH color (limiting + excess)
-      // remaining, matching Ted's request: "ideally there should be one
-      // green left … you have purple but not green."
-      const yieldFraction = selectedReaction?.yield ?? 0.98;
-      const unreactedFraction = Math.max(0, 1 - yieldFraction);
-      const LEFTOVER_FLOOR = 3;
-      const limitingLeftover = Math.max(LEFTOVER_FLOOR, Math.round(moleculeCounts.limiting * unreactedFraction));
-      const excessLeftover = Math.max(LEFTOVER_FLOOR, Math.round(
-        moleculeCounts.limiting * (selectedReaction?.excessReactant.coefficient ?? 1) * unreactedFraction
-      ));
-      // Show the trailing N limiting dots and N excess dots (from end of array)
-      visible.push(...limitingDots.slice(-Math.min(limitingLeftover, limitingDots.length)));
-      const stoichiometricExcess = moleculeCounts.limiting * (selectedReaction?.excessReactant.coefficient ?? 1);
-      const trueExtraExcess = excessDots.length - stoichiometricExcess; // poured beyond stoichiometric
-      const totalExcessVisible = Math.max(0, trueExtraExcess) + excessLeftover;
-      visible.push(...excessDots.slice(-Math.min(totalExcessVisible, excessDots.length)));
     }
+    // After reaction completes (reactionProgress >= 1), only show products and extra excess
+    // Do NOT show leftover reactants - only show the product particles with their special coloring
 
     // Products: at progress=1, show yield-fraction (not 100%) so visible
     // count matches the "actual yield" pedagogy.
     const yieldFraction = selectedReaction?.yield ?? 1;
     const productScale = reactionProgress < 1 ? reactionProgress : yieldFraction;
-    const visibleProductCount = Math.floor(productDots.length * productScale);
-    visible.push(...productDots.slice(0, visibleProductCount));
+    let visibleProductCount = Math.floor(productDots.length * productScale);
+    if (reactionProgress > 0 && productDots.length >= 2) {
+      visibleProductCount = Math.max(2, visibleProductCount);
+    }
+
+    const visibleProducts = productDots.slice(0, visibleProductCount);
+    if (reactionProgress > 0 && visibleProducts.length < 2 && selectedReaction) {
+      const missing = 2 - visibleProducts.length;
+      const extraPositions = generateRandomPositions(
+        missing,
+        [...visibleProducts, ...extraExcessDots],
+        selectedReaction.product.color,
+        waterLevel,
+      );
+      for (let i = 0; i < missing; i += 1) {
+        const dotIndex = visibleProducts.length + i;
+        const color = dotIndex === 0
+          ? selectedReaction.limitingReactant.color
+          : selectedReaction.excessReactant.color;
+        visibleProducts.push({ ...extraPositions[i], color });
+      }
+    }
+
+    visible.push(...visibleProducts);
 
     // Show extra excess dots (from addExtraExcess phase - unreacted)
     visible.push(...extraExcessDots);
 
     return visible;
-  }, [limitingDots, excessDots, productDots, extraExcessDots, reactionProgress, moleculeCounts.limiting, selectedReaction]);
+  }, [limitingDots, excessDots, productDots, extraExcessDots, reactionProgress, selectedReaction, waterLevel]);
 
   const reset = useCallback(() => {
     tagAction('reset', 'limitingReagent', { fromPhase: inputPhase });
