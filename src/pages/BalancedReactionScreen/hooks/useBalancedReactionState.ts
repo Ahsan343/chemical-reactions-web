@@ -3,7 +3,7 @@ import { type BalancedReactionDef, type Molecule, type Atom, ElementType } from 
 import { ReactionBalancer } from '../../../helper/chemistry/reactionBalancer';
 import { balancedReactions } from '../../../constants/reactions/balancedReactions';
 import { tagAction } from '../../../helper/actionLogger';
-import { setScreenCompleted } from '../../../helper/persistence/storage';
+import { loadFromStorage, saveToStorage, setScreenCompleted } from '../../../helper/persistence/storage';
 
 
 type Phase =
@@ -73,6 +73,13 @@ export function useBalancedReactionState(exploreMode = false): BalancedReactionS
     new ReactionBalancer(balancedReactions[0]),
   );
 
+  const BALANCED_STORAGE_KEY = 'balancedCompleted';
+
+  interface BalancedEntry {
+    reactionId: string;
+  }
+
+
   const selectReaction = useCallback((reaction: BalancedReactionDef) => {
     setSelectedReaction(reaction);
     balancerRef.current = new ReactionBalancer(reaction);
@@ -101,6 +108,11 @@ export function useBalancedReactionState(exploreMode = false): BalancedReactionS
       setPhase('balanced');
       setCompletedCount((prev) => prev + 1);
       setScreenCompleted('balanced');
+      if (selectedReaction) {
+        const existing = loadFromStorage<Record<string, BalancedEntry>>(BALANCED_STORAGE_KEY) ?? {};
+        existing[selectedReaction.id] = { reactionId: selectedReaction.id };
+        saveToStorage(BALANCED_STORAGE_KEY, existing);
+      }
       tagAction('screenCompleted', 'balancedReaction', { reactionId: selectedReaction?.id });
     } else if (!nowBalanced && phase === 'balanced') {
       setPhase('dragMolecules');

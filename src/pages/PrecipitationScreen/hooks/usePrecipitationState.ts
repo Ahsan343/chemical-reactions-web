@@ -107,6 +107,17 @@ interface MoleculeDot {
   y: number;
 }
 
+interface PrecipitationEntry {
+  completed: true;
+  reactionId: string;
+  metal: Metal;
+  waterLevel: number;
+  knownMoleculeCount: number;
+  unknownMoleculeCount: number;
+  precipitateMass: number;
+  phase: Phase;
+}
+
 const STORAGE_KEY = 'precipitationState';
 const MIN_MOLECULES = 5;
 const MAX_MOLECULES = 40;
@@ -391,17 +402,9 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
     // --- Stoichiometric helper: computes the physically-correct molecule split ---
     const stoichiometric = () => {
       const productsFormed = Math.min(knownMoleculeCount, unknownMoleculeCount);
-      const knownRemaining = knownMoleculeCount - productsFormed;
-      const unknownExcess = Math.max(0, unknownMoleculeCount - knownMoleculeCount);
-
-      const visibleKnown = knownMolecules.slice(0, knownRemaining);
-      // Show excess unknowns from the end of the array (first ones added reacted first)
-      const visibleUnknown = unknownExcess > 0
-        ? unknownMolecules.slice(unknownMoleculeCount - unknownExcess)
-        : [];
       const visibleProducts = productMolecules.slice(0, productsFormed);
 
-      return [...visibleKnown, ...visibleUnknown, ...visibleProducts];
+      return [...visibleProducts];
     };
 
     // Per Ted's 3-step directive: during the pour phases (addUnknown /
@@ -612,9 +615,12 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
               setProductMolecules(prods);
             }
             setEquationState('showAll');
-            setBeakerView('macroscopic');
-            setReactionProgress(0.5);
-            setPhase('postWeighing');
+            setBeakerView('microscopic');
+            setPhase('reaction1');
+            animateReaction(0, 1.0, 3000, () => {
+              setBeakerView('macroscopic');
+              setPhase('postWeighing');
+            });
           }
           break;
         case 'postWeighing':
@@ -624,7 +630,18 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
           setMetalRevealed(true);
           setPhase('complete');
           setScreenCompleted('precipitation');
-          saveToStorage(STORAGE_KEY, { completed: true });
+          if (selectedReaction && currentMetal) {
+            saveToStorage<PrecipitationEntry>(STORAGE_KEY, {
+              completed: true,
+              reactionId: selectedReaction.id,
+              metal: currentMetal,
+              waterLevel,
+              knownMoleculeCount,
+              unknownMoleculeCount,
+              precipitateMass: productMassProduced,
+              phase: 'complete',
+            });
+          }
           tagAction('screenCompleted', 'precipitation', { reactionId: selectedReaction?.id, explore: true });
           break;
         default:
@@ -757,7 +774,18 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
         if (reactionRun === 2) {
           // Both reactions done
           setScreenCompleted('precipitation');
-          saveToStorage(STORAGE_KEY, { completed: true });
+          if (selectedReaction && currentMetal) {
+            saveToStorage<PrecipitationEntry>(STORAGE_KEY, {
+              completed: true,
+              reactionId: selectedReaction.id,
+              metal: currentMetal,
+              waterLevel,
+              knownMoleculeCount,
+              unknownMoleculeCount,
+              precipitateMass: productMassProduced,
+              phase: 'complete',
+            });
+          }
         }
         tagAction('screenCompleted', 'precipitation', { reactionId: selectedReaction?.id, run: reactionRun });
         break;
@@ -796,7 +824,7 @@ export function usePrecipitationState(exploreMode = false): PrecipitationState {
       default:
         break;
     }
-  }, [phase, knownMoleculeCount, unknownMoleculeCount, exploreMode, currentMetal, selectedReaction, waterLevel, knownMolecules, completedReactionIds, reactionRun, productMolecules.length, animateReaction]);
+  }, [phase, knownMoleculeCount, unknownMoleculeCount, exploreMode, currentMetal, selectedReaction, waterLevel, knownMolecules, completedReactionIds, reactionRun, productMolecules.length, animateReaction, productMassProduced]);
 
   const back = useCallback(() => {
     tagAction('back', 'precipitation', { fromPhase: phase });

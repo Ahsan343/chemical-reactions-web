@@ -17,10 +17,17 @@ interface LimitingReagentEntry {
   inputPhase: string;
 }
 
+interface BalancedEntry {
+  reactionId: string;
+}
+
 interface PrecipitationEntry {
   completed: boolean;
   reactionId?: string;
   metal?: Metal;
+  waterLevel?: number;
+  knownMoleculeCount?: number;
+  unknownMoleculeCount?: number;
   precipitateMass?: number;
 }
 
@@ -62,16 +69,22 @@ function formatLimitingEquation(reaction: LimitingReagentReactionDef): string {
 }
 
 function BalancedSection() {
+  const completedEntries = loadFromStorage<Record<string, BalancedEntry>>('balancedCompleted') ?? {};
   const completedScreens = loadFromStorage<string[]>('completedScreens') ?? [];
-  const isComplete = completedScreens.includes('balanced');
+  const completedIds = Object.keys(completedEntries);
+  const isComplete = completedIds.length > 0 || completedScreens.includes('balanced');
 
   if (!isComplete) {
     return <EmptyState />;
   }
 
+  const reactionsToShow = completedIds.length > 0
+    ? balancedReactions.filter((reaction) => completedIds.includes(reaction.id))
+    : balancedReactions;
+
   return (
     <div className={styles.cardList}>
-      {balancedReactions.map((reaction) => (
+      {reactionsToShow.map((reaction) => (
         <div key={reaction.id} className={styles.card}>
           <div className={styles.cardHeader}>
             <h3 className={styles.reactionName}>{reaction.name}</h3>
@@ -165,12 +178,55 @@ function PrecipitationSection() {
     return <EmptyState />;
   }
 
+  const entries = stored?.completed ? [stored] : [];
+
+  if (entries.length === 0) {
+    return (
+      <div className={styles.cardList}>
+        {precipitationReactions.map((reaction) => {
+          const metals = reaction.metals;
+          return (
+            <div key={reaction.id} className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.reactionName}>
+                  {`${reaction.unknownReactant.formulaTemplate} + ${reaction.knownReactant.formula}`}
+                </h3>
+                <span className={styles.statusBadge}>Complete &#10003;</span>
+              </div>
+              <p className={styles.equation}>
+                {reaction.product.formula} (s) — Molar Mass: {reaction.product.molarMass} g/mol
+              </p>
+              <div className={styles.dataRow}>
+                <div className={styles.dataItem}>
+                  <span className={styles.dataLabel}>Possible Metals</span>
+                  <span className={styles.dataValue}>{metals.join(', ')}</span>
+                </div>
+                <div className={styles.dataItem}>
+                  <span className={styles.dataLabel}>Precipitate</span>
+                  <span className={styles.dataValue}>{reaction.product.formula}</span>
+                </div>
+                <div className={styles.dataItem}>
+                  <span className={styles.dataLabel}>Product Molar Mass</span>
+                  <span className={`${styles.dataValue} ${styles.accentValue}`}>
+                    {reaction.product.molarMass} g/mol
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className={styles.cardList}>
-      {precipitationReactions.map((reaction) => {
-        const metals = reaction.metals;
+      {entries.map((storedEntry) => {
+        const reaction = precipitationReactions.find((r) => r.id === storedEntry.reactionId);
+        if (!reaction) return null;
+
         return (
-          <div key={reaction.id} className={styles.card}>
+          <div key={storedEntry.reactionId} className={styles.card}>
             <div className={styles.cardHeader}>
               <h3 className={styles.reactionName}>
                 {`${reaction.unknownReactant.formulaTemplate} + ${reaction.knownReactant.formula}`}
@@ -182,17 +238,17 @@ function PrecipitationSection() {
             </p>
             <div className={styles.dataRow}>
               <div className={styles.dataItem}>
-                <span className={styles.dataLabel}>Possible Metals</span>
-                <span className={styles.dataValue}>{metals.join(', ')}</span>
+                <span className={styles.dataLabel}>Metal</span>
+                <span className={styles.dataValue}>{storedEntry.metal ?? 'Unknown'}</span>
               </div>
               <div className={styles.dataItem}>
-                <span className={styles.dataLabel}>Precipitate</span>
-                <span className={styles.dataValue}>{reaction.product.formula}</span>
+                <span className={styles.dataLabel}>Water Level</span>
+                <span className={styles.dataValue}>{storedEntry.waterLevel?.toFixed(2)} L</span>
               </div>
               <div className={styles.dataItem}>
-                <span className={styles.dataLabel}>Product Molar Mass</span>
+                <span className={styles.dataLabel}>Precipitate Mass</span>
                 <span className={`${styles.dataValue} ${styles.accentValue}`}>
-                  {reaction.product.molarMass} g/mol
+                  {storedEntry.precipitateMass?.toFixed(2)} g
                 </span>
               </div>
             </div>

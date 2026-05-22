@@ -164,12 +164,12 @@ export default function ProgressChart({
     <div className={styles.container}>
       <div className={styles.plotArea} style={{ minHeight: chartHeight }}>
         <div className={styles.column} style={{ height: chartHeight }}>
-          {Array.from({ length: limitingDots }).map((_, i) =>
+          {clampedProgress < 1 && Array.from({ length: limitingDots }).map((_, i) =>
             renderDot(`l-${i}`, reactantColor, i)
           )}
         </div>
         <div className={styles.column} style={{ height: chartHeight }}>
-          {Array.from({ length: excessDots }).map((_, i) =>
+          {clampedProgress < 1 && Array.from({ length: excessDots }).map((_, i) =>
             renderDot(`e-${i}`, excessColor, i)
           )}
         </div>

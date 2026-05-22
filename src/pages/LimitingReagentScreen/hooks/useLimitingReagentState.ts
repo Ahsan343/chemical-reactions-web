@@ -462,30 +462,17 @@ export function useLimitingReagentState(exploreMode = false) {
     }
 
     const visibleProducts = productDots.slice(0, visibleProductCount);
-    if (reactionProgress > 0 && visibleProducts.length < 2 && selectedReaction) {
-      const missing = 2 - visibleProducts.length;
-      const extraPositions = generateRandomPositions(
-        missing,
-        [...visibleProducts, ...extraExcessDots],
-        selectedReaction.product.color,
-        waterLevel,
-      );
-      for (let i = 0; i < missing; i += 1) {
-        const dotIndex = visibleProducts.length + i;
-        const color = dotIndex === 0
-          ? selectedReaction.limitingReactant.color
-          : selectedReaction.excessReactant.color;
-        visibleProducts.push({ ...extraPositions[i], color });
-      }
-    }
 
     visible.push(...visibleProducts);
 
     // Show extra excess dots (from addExtraExcess phase - unreacted)
-    visible.push(...extraExcessDots);
+    // But ONLY if reaction hasn't completed yet
+    if (reactionProgress < 1) {
+      visible.push(...extraExcessDots);
+    }
 
     return visible;
-  }, [limitingDots, excessDots, productDots, extraExcessDots, reactionProgress, selectedReaction, waterLevel]);
+  }, [limitingDots, excessDots, productDots, extraExcessDots, reactionProgress, selectedReaction]);
 
   const reset = useCallback(() => {
     tagAction('reset', 'limitingReagent', { fromPhase: inputPhase });
