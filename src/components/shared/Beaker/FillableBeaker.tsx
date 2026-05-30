@@ -13,6 +13,8 @@ interface FillableBeakerProps extends Omit<BeakerProps, 'liquidLevel'> {
   minWaterLevel?: number;
   /** Maximum slider value (iOS parity: 0.7 for precipitation). Defaults to 1. */
   maxWaterLevel?: number;
+  /** Formats the slider value label. Defaults to showing the raw level in liters. */
+  formatValue?: (value: number) => string;
   /** Content rendered inside the liquid area */
   children?: ReactNode;
 }
@@ -23,9 +25,10 @@ interface VerticalSliderProps {
   max: number;
   onChange: (v: number) => void;
   disabled: boolean;
+  formatValue: (value: number) => string;
 }
 
-function VerticalSlider({ value, min, max, onChange, disabled }: VerticalSliderProps) {
+function VerticalSlider({ value, min, max, onChange, disabled, formatValue }: VerticalSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
@@ -93,7 +96,7 @@ function VerticalSlider({ value, min, max, onChange, disabled }: VerticalSliderP
         className={styles.sliderThumbRow}
         style={{ top: `${emptyPct}%` }}
       >
-        <span className={styles.sliderValueLabel}>{value.toFixed(3)}L</span>
+        <span className={styles.sliderValueLabel}>{formatValue(value)}</span>
         <div className={styles.sliderThumb} />
       </div>
     </div>
@@ -106,6 +109,7 @@ export function FillableBeaker({
   disabled = false,
   minWaterLevel = 0,
   maxWaterLevel = 1,
+  formatValue = (v: number) => `${v.toFixed(3)}L`,
   children,
   ...beakerProps
 }: FillableBeakerProps) {
@@ -120,6 +124,7 @@ export function FillableBeaker({
           max={maxWaterLevel}
           onChange={onWaterLevelChange}
           disabled={disabled}
+          formatValue={formatValue}
         />
       </div>
       <Beaker {...beakerProps} liquidLevel={resolvedWaterLevel}>

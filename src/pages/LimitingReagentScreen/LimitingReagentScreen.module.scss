@@ -48,7 +48,9 @@
 
 /* ── CENTER: beaker column on the left, chart in the middle.
    align-items: flex-end so beaker and chart sit on the same baseline.
-   padding-bottom lifts the whole row up so it doesn't hug the screen edge. */
+   padding-bottom keeps the row off the screen edge. It must stay small enough
+   that the (fixed-height) beaker column still clears the equation panel above
+   at the tightest logical canvas height (780px); see beakyArea below. */
 .centerArea {
   flex: 1;
   display: flex;
@@ -57,7 +59,7 @@
   justify-content: flex-start;
   gap: 80px;
   min-height: 0;
-  padding-bottom: 220px;
+  padding-bottom: 16px;
   padding-left: 160px;
   padding-right: 80px;
 }
@@ -123,10 +125,10 @@
 }
 
 /* ── BeakyBox — right side, baseline aligned with beaker + chart bottoms.
-   bottom = padding-bottom of centerArea (220px) for matching baseline. */
+   bottom MUST equal padding-bottom of centerArea for a matching baseline. */
 .beakyArea {
   position: absolute;
-  bottom: 220px;
+  bottom: 16px;
   right: 60px;
   z-index: 10;
   max-width: 400px;
@@ -138,26 +140,26 @@
    beaky further left, and tighten the gap. Desktop layout is untouched. */
 @media (max-width: 1024px) {
   .centerArea {
-    padding-bottom: 40px;
+    padding-bottom: 16px;
     padding-left: 60px;
     padding-right: 40px;
     gap: 40px;
   }
   .beakyArea {
-    bottom: 40px;
+    bottom: 16px;
     right: 20px;
   }
 }
 
 @media (max-width: 600px) {
   .centerArea {
-    padding-bottom: 20px;
+    padding-bottom: 16px;
     padding-left: 30px;
     padding-right: 20px;
     gap: 20px;
   }
   .beakyArea {
-    bottom: 20px;
+    bottom: 16px;
     right: 20px;
   }
 }

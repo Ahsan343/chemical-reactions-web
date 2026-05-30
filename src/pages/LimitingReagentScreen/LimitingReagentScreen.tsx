@@ -16,7 +16,7 @@ import HighlightOverlay from '../../components/shared/HighlightOverlay/Highlight
 import EquationDisplay from '../../components/shared/EquationDisplay/EquationDisplay';
 import type { EquationSegment } from '../../components/shared/EquationDisplay/EquationDisplay';
 import LimitingEquationView, { type LimitingEquationHighlight } from '../../components/limiting-reagent/LimitingEquationView/LimitingEquationView';
-import { MIN_WATER_LEVEL } from './hooks/useLimitingReagentState';
+import { MIN_WATER_LEVEL, waterLevelToVolume } from './hooks/useLimitingReagentState';
 import ProgressChart from '../../components/limiting-reagent/ProgressChart/ProgressChart';
 
 import styles from './LimitingReagentScreen.module.scss';
@@ -164,7 +164,7 @@ export default function LimitingReagentScreen() {
       // --- Set water level (iOS step 7) ---
       case 'setWaterLevel':
         return [
-          { text: 'This reaction takes place in water as we already know, so let\'s first set the volume of water (in liters) in the beaker. Volume is often represented by the letter ' },
+          { text: 'This reaction takes place in water as we already know, so let\'s first set the volume of solution (in liters) in the beaker. Volume is often represented by the letter ' },
           { text: 'V', bold: true },
           { text: '. ' },
           { text: 'Use the slider to set the volume.', bold: true, color: 'rgb(220, 84, 59)' },
@@ -221,8 +221,8 @@ export default function LimitingReagentScreen() {
       case 'showLimitingMoles':
         return [
           { text: `Since there are ` },
-          { text: `${state.volume.toFixed(3)} L`, bold: true, color: 'rgb(220, 84, 59)' },
-          { text: ' of water in the beaker, there are ' },
+          { text: `${state.volume.toFixed(2)} L`, bold: true, color: 'rgb(220, 84, 59)' },
+          { text: ' of solution in the beaker, there are ' },
           { text: `${state.limitingMoles.toFixed(2)} moles`, bold: true, color: 'rgb(220, 84, 59)' },
           { text: ` of ` },
           { text: r?.limitingReactant.formula ?? '', bold: true, color: r?.limitingReactant.color },
@@ -556,6 +556,7 @@ export default function LimitingReagentScreen() {
                 waterLevel={state.waterLevel}
                 onWaterLevelChange={state.setWaterLevel}
                 minWaterLevel={MIN_WATER_LEVEL}
+                formatValue={(wl) => `${waterLevelToVolume(wl).toFixed(2)}L`}
                 disabled={exploreMode ? !hasReaction || state.isReacting : state.inputPhase !== 'setWaterLevel'}
                 liquidColor="rgb(192, 224, 224)"
                 width={320}

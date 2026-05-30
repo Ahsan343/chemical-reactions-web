@@ -61,6 +61,19 @@ const MAX_LIMITING_MOLECULES = 30;
 const MIN_EXTRA_EXCESS = 5;
 export const MIN_WATER_LEVEL = 0.1;
 export const MAX_WATER_LEVEL = 1;
+// iOS parity (ChemicalReactionsSettings.rowsToVolume): the water level maps
+// linearly to a solution volume of 0.1 L (min) → 0.7 L (max). The SAME value
+// is shown on the slider and used in the equation, so they always agree.
+export const MIN_VOLUME = 0.1;
+export const MAX_VOLUME = 0.7;
+
+/** Convert a beaker water level (MIN_WATER_LEVEL..MAX_WATER_LEVEL) into the
+ *  solution volume in liters used by the equation. */
+export function waterLevelToVolume(level: number): number {
+  const clamped = Math.max(MIN_WATER_LEVEL, Math.min(MAX_WATER_LEVEL, level));
+  const fraction = (clamped - MIN_WATER_LEVEL) / (MAX_WATER_LEVEL - MIN_WATER_LEVEL);
+  return MIN_VOLUME + fraction * (MAX_VOLUME - MIN_VOLUME);
+}
 // iOS MoleculeGridSettings: 19 columns × 10 rows
 const GRID_COLS = 19;
 const GRID_ROWS = 10;
@@ -185,7 +198,7 @@ export function useLimitingReagentState(exploreMode = false) {
 
   const reactionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const volume = useMemo(() => waterLevel * 0.25, [waterLevel]);
+  const volume = useMemo(() => waterLevelToVolume(waterLevel), [waterLevel]);
 
   const molarity = useMemo(() => {
     if (!selectedReaction || volume <= 0) return 0;
@@ -465,11 +478,10 @@ export function useLimitingReagentState(exploreMode = false) {
 
     visible.push(...visibleProducts);
 
-    // Show extra excess dots (from addExtraExcess phase - unreacted)
-    // But ONLY if reaction hasn't completed yet
-    if (reactionProgress < 1) {
-      visible.push(...extraExcessDots);
-    }
+    // Show extra excess dots (from addExtraExcess phase - unreacted). These
+    // are added AFTER the reaction completes (reactionProgress === 1), so they
+    // must stay visible in the beaker to match the chart's accumulating count.
+    visible.push(...extraExcessDots);
 
     return visible;
   }, [limitingDots, excessDots, productDots, extraExcessDots, reactionProgress, selectedReaction]);

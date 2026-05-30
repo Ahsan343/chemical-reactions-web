@@ -169,7 +169,7 @@ export default function ProgressChart({
           )}
         </div>
         <div className={styles.column} style={{ height: chartHeight }}>
-          {clampedProgress < 1 && Array.from({ length: excessDots }).map((_, i) =>
+          {Array.from({ length: excessDots }).map((_, i) =>
             renderDot(`e-${i}`, excessColor, i)
           )}
         </div>
